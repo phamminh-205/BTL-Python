@@ -37,7 +37,7 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(50), unique=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.STUDENT)
+    role = Column(Enum(UserRole, name='user_role'), nullable=False, default=UserRole.STUDENT)
     email = Column(String(255), unique=True, nullable=False, index=True)
     department = Column(String(100))
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -58,7 +58,7 @@ class Project(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date)
     description = Column(Text)
-    status = Column(Enum(ProjectStatus), default=ProjectStatus.DRAFT, index=True)
+    status = Column(Enum(ProjectStatus, name='project_status'), default=ProjectStatus.DRAFT, index=True)
     leader_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='RESTRICT'), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -78,7 +78,7 @@ class ProjectMember(Base):
 
     user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
     project_id = Column(UUID(as_uuid=True), ForeignKey('projects.id', ondelete='CASCADE'), primary_key=True)
-    role_in_project = Column(Enum(ProjectMemberRole), nullable=False, default=ProjectMemberRole.MEMBER)
+    role_in_project = Column(Enum(ProjectMemberRole, name='project_member_role'), nullable=False, default=ProjectMemberRole.MEMBER)
     joined_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
