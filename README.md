@@ -1,73 +1,49 @@
-# Hệ Thống Quản Lý Hoạt Động Khoa Học
-**Khoa An Toàn Thông Tin (PTIT)**
+# Hệ Thống Quản Lý Đề Tài NCKH và Hoạt Động Khoa Học
+**Dự án Bài Tập Lớn (BTL) - Khoa An toàn Thông tin**
 
-Đây là một dự án Fullstack chuẩn mực (Backend API + Frontend SPA + Database) nhằm phục vụ quản lý, đăng ký và theo dõi tiến độ các Hợp đồng/Đề tài Nghiên cứu Khoa học của Giảng viên và Sinh viên, được đóng gói hoàn toàn trong môi trường Docker.
+Dự án là một hệ thống Website Full-Stack quản trị vòng đời đề tài nghiên cứu khoa học, gán quyền truy cập Role-Based Access Control (RBAC) nghiêm ngặt và kiến trúc chịu tải với Docker.
 
-## Công nghệ sử dụng
-- **Backend**: FastAPI (Python), SQLAlchemy (Async), Passlib (Bcrypt), JWT Auth.
-- **Frontend**: React (Vite), React Router, Axios, Lucide Icons. Thiết kế giao diện theo phong cách Academic Light Theme sạch sẽ.
-- **Database**: PostgreSQL 15, sử dụng engine `asyncpg` tối ưu luồng I/O bất đồng bộ.
-- **DevOps**: Docker, Docker Compose, Multi-stage builds với Nginx phục vụ web tĩnh.
+## Công Nghệ Sử Dụng
 
----
-
-## Tính năng và Chức năng Chính của Hệ Thống
-
-Hệ thống được thiết kế theo quy trình nghiệp vụ thực tế của khoa, bao gồm các module chức năng cốt lõi:
-
-**1. Hệ thống Phân quyền Quản trị (Authentication & Authorization)**
-- Đăng nhập bảo mật sử dụng **JWT (JSON Web Token)** với mật khẩu được băm bằng chuẩn `bcrypt`.
-- Phân tách quyền hạn truy cập theo 3 cấp độ: `ADMIN`, `TEACHER` (Giảng viên) và `STUDENT` (Sinh viên). 
-  *(Ví dụ: Sinh viên có thể xem Danh sách, nhưng chỉ Giảng viên và Admin mới có quyền khởi tạo Đề tài mới).*
-
-**2. Quản lý Đề Tài Nghiên cứu Khoa học (Projects)**
-- **Đăng ký mới**: Ghi nhận toàn bộ thông tin Đề tài (Tên đề tài, Lĩnh vực, Kinh phí dự kiến, Thời gian bắt đầu/kết thúc).
-- **Theo dõi Trạng thái**: Số hóa các vòng đời của 1 đề tài bằng các nhãn trạng thái trực quan: `DRAFT` (Bản nháp) -> `SUBMITTED` (Chờ duyệt) -> `APPROVED` (Đang triển khai) -> `COMPLETED` (Hoàn thành) hoặc `REJECTED` (Bị từ chối).
-- Hiển thị danh sách tổng quan trên màn hình Dashboard bằng giao diện bảng hiện đại.
-
-**3. Quản lý Nhóm Nghiên cứu (Project Members)**
-- Tự động gán quyền Chủ nhiệm Đề tài (`CHAIRMAN`) cho cá nhân khởi tạo.
-- Hỗ trợ mô hình kết nối N-N: Có thể thêm/bớt nhiều nhân sự (`MEMBER`, `SECRETARY`) cùng tham gia đóng góp cho một đề tài.
-
-**4. Quản lý Minh chứng Công bố Khoa học (Publications)**
-- Nơi các Giảng viên/Sinh viên đăng tải và gắn kèm link các bài báo khoa học, kỉ yếu hội thảo (Tên bài, tên tạp chí, ngày publish). Các bài báo này có thể được gán/tham chiếu trực tiếp vào một Đề tài NCKH cụ thể làm minh chứng nghiệm thu trực tiếp.
+- **Backend Logic**: Pytgon 3.10+, FastAPI, Pydantic, Passlib (Bcrypt hashing)
+- **Cơ Sở Dữ Liệu**: Tiêu chuẩn RDBMS PostgreSQL (thông qua `asyncpg` chặn Error native), SQLAlchemy (Async ORM).
+- **Frontend Panel**: React 18, Vite, Axios Interceptors (JWT Token Auth), Vanilla CSS, Lucide-Icons.
+- **Microservices Deployment**: Docker, Docker Compose (Tự động khởi tạo mạng cô lập).
 
 ---
 
-Hệ thống đã được thiết kế sẵn **Seed Data** (dữ liệu mẫu) và luồng tự khởi tạo Database. Bạn không cần setup các môi trường Python hay Node.js rườm rà.
+## Phân Quyền Hệ Thống (RBAC Layers)
 
-Điều kiện tiên quyết: Máy tính của bạn đã cài đặt sẵn **Docker** và **Docker Compose**.
+Hệ thống cung cấp trải nghiệm UI và API giới hạn theo Role quy chuẩn:
 
-1. Clone hoặc tải mã nguồn về.
-2. Mở Terminal / Command Prompt tại thư mục gốc dự án (ngang hàng với file `docker-compose.yml`).
-3. Chạy lệnh sau:
-   ```bash
-   docker-compose up -d --build
-   ```
-4. Đợi Docker tải Images và khởi chạy. Khi quá trình hoàn tất (các container hiển thị `Running` / `Healthy`), hệ thống đã sẵn sàng phục vụ.
-
----
-
-## Cách Test Hệ Thống (MVP)
-
-Sau khi hệ thống khởi chạy thành công, bạn kiểm tra 2 cổng dịch vụ sau:
-
-### 1. Trải nghiệm giao diện Web (Frontend)
-- Mở trình duyệt và truy cập: [http://localhost](http://localhost)
-- Hệ thống bảo mật sẽ yêu cầu bạn đăng nhập. Vui lòng sử dụng tài khoản Seed Data đã được cắm sẵn vào DB:
-  - **Tên đăng nhập:** `admin`
-  - **Mật khẩu:** `admin123`
-- Đăng nhập thành công, bạn sẽ thấy giao diện Dashboard lịch sự cùng nút mở tab **Tất cả Đề tài** đổ dữ liệu thời gian thực từ Postgres.
-
-### 2. Trải nghiệm môi trường API (Backend)
-- Để truy cập trang tài liệu Swagger UI của FastAPI: [http://localhost:8000/docs](http://localhost:8000/docs)
-- Tại đây bạn có thể thấy tất cả các luồng Endpoints (`/api/auth`, `/api/projects`).
-- Để test thẳng trên Swagger: Bấm vào biểu tượng ổ khóa **[Authorize]** trên góc phải màn hình, điền `admin` và `admin123` để nhận JWT Token. Sau đó gọi thử Endpoint hiển thị Data tùy thích.
+| Quyền Hạn | ADMIN (Quản Trị) | TEACHER (Giảng Viên) | STUDENT (Sinh Viên) |
+| :--- | :--- | :--- | :--- |
+| **Xem bảng Đề Tài** | Đầy đủ | Đầy đủ | Chỉ Đọc (Read-Only) |
+| **Đăng ký mới** | Bật | Bật | Bị Tước API / Ẩn Nút |
+| **Quản trị Nhân sự** | Mọi Dự án | Chỉ Dự án sở hữu (`leader_id`) | Bị Cấm Truy cập |
+| **Khai báo Bài Báo** | Mọi Dự án | Chỉ Dự án sở hữu (`leader_id`) | Bị Cấm Truy cập |
+| **Xóa Mềm (Delete)** | **ON** | OFF | OFF |
 
 ---
 
-## Cách tắt Hệ thống
-Để tắt và xóa dọn rác các container (Lưu ý: Dữ liệu DB đã được mount ra Volume ngoài nên **không** bị mất):
+## Hướng Dẫn Cài Đặt Khởi Chạy
+
+Toàn bộ hệ thống chạy chia tách Backend (trong Container) và Frontend (Dev Local) vô cùng linh hoạt. 
+
+### Khởi động Frontend + Backend + DB bằng Docker
+Di chuyển Terminal vào thư mục chứa `docker-compose.yml` (Thư mục gốc) và chạy:
 ```bash
-docker-compose down
+docker compose up -d --build
 ```
+> **Lưu ý**: Lệnh này tự động tải Image Postgres+Python, lập tức kết nối và nạp Seed Data. Sau ~20 giây, Backend sẽ đứng đợi tại địa chỉ `http://localhost:8000`. API Docs có tại `http://localhost:8000/docs`.
+
+---
+
+## Mẫu Tài Khoản (Seed Data)
+Cơ sở dữ liệu tự nạp sẵn cho Giám khảo 3 Tài khoản kiểm thử thuộc 3 Tầng Quyền:
+
+1. **`admin`** | Mật khẩu: `admin123` *(Full quyền, Quyền chém dự án)*
+2. **`teacher1`** | Mật khẩu: `admin123` *(Lãnh chúa vùng không gian riêng: Menu Cập nhật đề tài cá nhân)*
+3. **`student1`** | Mật khẩu: `admin123` *(Menu bị giấu bớt, Trải nghiệm tham quan 100% Thuần túy View-Only)*
+
+---
