@@ -19,8 +19,31 @@
         <!-- KHI BẤM VÀO ĐÂY ADMIN MỚI THẤY -->
         <div id="adminPanel" class="card shadow panel-hidden" style="margin-bottom: 20px;">
             <h3>Quản trị Hệ thống</h3>
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <button class="btn btn-primary btn-sm" onclick="fetchUsers()">Xem Người dùng</button>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label>Tên đăng nhập</label>
+                    <input type="text" id="adminNewUser" class="form-control" placeholder="username">
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label>Mật khẩu</label>
+                    <input type="password" id="adminNewPass" class="form-control" placeholder="password">
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <label>Quyền</label>
+                    <select id="adminNewRole" class="form-control">
+                        <option value="STUDENT">Sinh viên</option>
+                        <option value="TEACHER">Giảng viên</option>
+                        <option value="ADMIN">Quản trị viên</option>
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label>Email</label>
+                    <input type="email" id="adminNewEmail" class="form-control" placeholder="email@ptit.edu.vn">
+                </div>
+                <div style="width: 100%;">
+                    <button class="btn btn-primary btn-sm" onclick="createUser()">+ Tạo tài khoản</button>
+                    <button class="btn btn-sm" onclick="fetchUsers()">Xem/Cập nhật danh sách</button>
+                </div>
             </div>
             <div id="usersListContent"></div>
         </div>
@@ -30,11 +53,54 @@
             <h3>Khu vực Giảng viên</h3>
             <button class="btn btn-success btn-sm" onclick="document.getElementById('addProjectForm').style.display='block'">+ Tạo đề tài mới</button>
             
-            <div id="addProjectForm" style="display:none; margin-top: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                <input type="text" id="newTitle" placeholder="Tên đề tài..." class="form-control" style="margin-bottom:10px;">
-                <input type="date" id="newDate" class="form-control" style="margin-bottom:10px;">
-                <button class="btn btn-primary btn-sm" onclick="createProject()">Lưu lại</button>
-                <button class="btn btn-sm" onclick="document.getElementById('addProjectForm').style.display='none'">Hủy</button>
+            <div id="addProjectForm" style="display:none; margin-top: 15px; background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                <h4>Thông tin đề tài mới</h4>
+                <div class="form-group">
+                    <label>Tên đề tài</label>
+                    <input type="text" id="newTitle" placeholder="Tên đề tài nghiên cứu..." class="form-control">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Ngày bắt đầu</label>
+                        <input type="date" id="newDate" class="form-control">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Địa điểm Lab</label>
+                        <input type="text" id="newLab" placeholder="Phòng Lab..." class="form-control">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Mô tả chi tiết</label>
+                    <textarea id="newDescription" rows="3" class="form-control" placeholder="Mục tiêu, nội dung cần nghiên cứu..."></textarea>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="createProject()">Xác nhận tạo</button>
+                <button class="btn btn-sm" onclick="document.getElementById('addProjectForm').style.display='none'">Hủy bỏ</button>
+            </div>
+
+            <!-- Form cập nhật đề tài -->
+            <div id="editProjectForm" style="display:none; margin-top: 15px; background: #fff3e0; padding: 20px; border-radius: 8px; border: 1px solid #ffcc80;">
+                <h4 id="editFormTitle">Cập nhật đề tài: </h4>
+                <input type="hidden" id="editProjectId">
+                <div class="form-group">
+                    <label>Tên đề tài</label>
+                    <input type="text" id="editTitle" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Mô tả</label>
+                    <textarea id="editDescription" rows="3" class="form-control"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Địa điểm Lab</label>
+                        <input type="text" id="editLab" class="form-control">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Link tài liệu (Drive/OneDrive)</label>
+                        <input type="text" id="editDoc" placeholder="https://..." class="form-control">
+                    </div>
+                </div>
+                <button class="btn btn-success btn-sm" onclick="updateProjectAction()">Lưu thay đổi</button>
+                <button class="btn btn-sm" onclick="document.getElementById('editProjectForm').style.display='none'">Đóng</button>
             </div>
         </div>
 

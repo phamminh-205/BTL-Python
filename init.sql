@@ -19,6 +19,8 @@ CREATE TABLE projects (
     budget DECIMAL(15, 2) DEFAULT 0.00,
     start_date DATE NOT NULL,
     description TEXT,
+    lab_location VARCHAR(255),
+    document_url TEXT,
     status project_status DEFAULT 'DRAFT',
     leader_id UUID NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

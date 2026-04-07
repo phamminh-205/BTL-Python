@@ -44,9 +44,40 @@ def create_project():
     cursor = conn.cursor()
     
     cursor.execute("""
-        INSERT INTO projects (title, budget, start_date, description, leader_id) 
-        VALUES (%s, %s, %s, %s, %s)
-    """, (data['title'], data.get('budget', 0), data['start_date'], data.get('description', ''), user_id))
+        INSERT INTO projects (title, budget, start_date, description, lab_location, leader_id) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (data['title'], data.get('budget', 0), data['start_date'], data.get('description', ''), data.get('lab_location', ''), user_id))
+    
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@projects_bp.route("/api/projects/<project_id>", methods=["PUT"])
+def update_project(project_id):
+    # Dùng cho Giảng viên cập nhật thông tin đề tài của mình
+    user_id = request.headers.get("X-User-Id")
+    user_role = request.headers.get("X-User-Role")
+    
+    if user_role != 'TEACHER':
+        return jsonify({"error": "Chỉ giảng viên mới được sửa đề tài"}), 403
+        
+    data = request.json
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Kiểm tra quyền sở hữu đề tài trước khi sửa
+    cursor.execute("SELECT leader_id FROM projects WHERE id = %s", (project_id,))
+    project = cursor.fetchone()
+    
+    if not project or str(project[0]) != user_id:
+        conn.close()
+        return jsonify({"error": "Bạn không có quyền sửa đề tài này"}), 403
+        
+    cursor.execute("""
+        UPDATE projects 
+        SET title = %s, description = %s, lab_location = %s, document_url = %s
+        WHERE id = %s
+    """, (data['title'], data.get('description', ''), data.get('lab_location', ''), data.get('document_url', ''), project_id))
     
     conn.commit()
     conn.close()
