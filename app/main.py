@@ -1,9 +1,9 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-from app.auth import auth_bp
-from app.projects import projects_bp
-from app.requests_data import requests_bp
-from app.users import users_bp
+from auth import auth_bp
+from projects import projects_bp
+from requests_data import requests_bp
+from users import users_bp
 
 app = Flask(__name__)
 # Bật CORS vô điều kiện để đơn giản hóa cho người mới

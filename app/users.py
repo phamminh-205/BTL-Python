@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from psycopg2.extras import RealDictCursor
-from app.db import get_db_connection
+from db import get_db_connection
 
 users_bp = Blueprint('users', __name__)
 
