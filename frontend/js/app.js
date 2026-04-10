@@ -49,7 +49,7 @@ function checkAuthAndLoadData() {
     }
 
     document.getElementById('userNameLabel').innerText = name;
-    document.getElementById('userRoleBadge').innerText = role;
+    // document.getElementById('userRoleBadge').innerText = role; // Đã gỡ bỏ badge khỏi HTML
 
     if (role === 'ADMIN') document.getElementById('adminPanel').style.display = 'block';
     if (role === 'TEACHER') document.getElementById('teacherPanel').style.display = 'block';
@@ -75,7 +75,7 @@ async function fetchAPI(endpoint, options = {}) {
 // ===== API GỌI DATA ĐỀ TÀI =====
 async function loadProjects() {
     const projects = await fetchAPI('/projects');
-    currentProjects = projects; // Lưu lại để dùng khi Edit
+    currentProjects = projects; 
     const tbody = document.getElementById('projectsBody');
     const role = localStorage.getItem('user_role');
     const currentUserId = localStorage.getItem('user_id');
@@ -84,42 +84,44 @@ async function loadProjects() {
     projects.forEach(p => {
         let actionButtons = '';
         
-        // Hiển thị Lab và Document Link nếu có
-        let metaInfo = `<br><small style="color:#666">📍 Lab: ${p.lab_location || 'Chưa cập nhật'}</small>`;
+        let metaInfo = `<div style="margin-top:8px; display:flex; gap:12px; font-size:12px;">
+            <span style="color:var(--text-muted); display:flex; align-items:center; gap:4px;"><i class="ph ph-map-pin"></i> ${p.lab_location || 'Chưa cập nhật'}</span>`;
         if (p.document_url) {
-            metaInfo += ` | <a href="${p.document_url}" target="_blank" style="font-size:11px; text-decoration:none; color:#0056b3;">🔗 Tài liệu</a>`;
+            metaInfo += `<a href="${p.document_url}" target="_blank" style="text-decoration:none; color:var(--primary); display:flex; align-items:center; gap:4px; font-weight:600;"><i class="ph ph-link"></i> Tài liệu</a>`;
         }
+        metaInfo += `</div>`;
 
-        // ADMIN: Duyệt / Hủy
         if (role === 'ADMIN') {
-            if (p.status !== 'APPROVED') actionButtons += `<button class="btn btn-success btn-sm" onclick="changeStatus('${p.id}', 'APPROVED')">Duyệt</button> `;
-            if (p.status !== 'REJECTED') actionButtons += `<button class="btn btn-sm" style="background:red; color:white;" onclick="changeStatus('${p.id}', 'REJECTED')">Hủy</button>`;
+            if (p.status !== 'APPROVED') actionButtons += `<button class="btn btn-success btn-sm" onclick="changeStatus('${p.id}', 'APPROVED')"><i class="ph ph-check"></i> Duyệt</button> `;
+            if (p.status !== 'REJECTED') actionButtons += `<button class="btn btn-danger btn-sm" onclick="changeStatus('${p.id}', 'REJECTED')"><i class="ph ph-x"></i> Hủy</button>`;
         }
         
-        // TEACHER: Xem yêu cầu & Sửa đề tài của mình
         if (role === 'TEACHER') {
-            actionButtons += `<button class="btn btn-primary btn-sm" onclick="viewRequests('${p.id}')">Yêu cầu SV</button> `;
+            actionButtons += `<button class="btn btn-primary btn-sm" onclick="viewRequests('${p.id}')"><i class="ph ph-users"></i> Yêu cầu SV</button> `;
             if (p.leader_id === currentUserId) {
-                actionButtons += `<button class="btn btn-sm" style="background:#6c757d; color:white;" onclick="openEditProject('${p.id}')">Chỉnh sửa</button>`;
+                actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openEditProject('${p.id}')"><i class="ph ph-pencil"></i> Sửa</button>`;
             }
         }
         
-        // STUDENT: Xin tham gia
         if (role === 'STUDENT') {
-            actionButtons += `<button class="btn btn-success btn-sm" onclick="applyProject('${p.id}')">Xin tham gia</button>`;
+            actionButtons += `<button class="btn btn-success btn-sm" onclick="applyProject('${p.id}')"><i class="ph ph-paper-plane-tilt"></i> Xin tham gia</button>`;
         }
+
+        const statusStyle = p.status === 'APPROVED' ? 'background:#dcfce7; color:#166534;' : 
+                            p.status === 'REJECTED' ? 'background:#fee2e2; color:#991b1b;' : 
+                            'background:#f1f5f9; color:#475569;';
 
         tbody.innerHTML += `
             <tr>
                 <td>
-                    <b>${p.title}</b>
+                    <div style="font-weight:700; font-size:15px; color:var(--text-main);">${p.title}</div>
+                    <div style="font-size:13px; color:var(--text-muted); margin-top:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${p.description || 'Không có mô tả.'}</div>
                     ${metaInfo}
-                    <p style="font-size:12px; margin:5px 0 0 0; color:#444;">${p.description || ''}</p>
                 </td>
-                <td>${p.leader_name}</td>
-                <td>${p.start_date || 'N/A'}</td>
-                <td><span class="badge" style="background:#f1f1f1; border:1px solid #ddd">${p.status}</span></td>
-                <td>${actionButtons}</td>
+                <td style="font-weight:500;"><i class="ph ph-user-circle"></i> ${p.leader_name}</td>
+                <td style="color:var(--text-muted); font-size:13px;">${p.start_date || 'N/A'}</td>
+                <td><span class="badge" style="${statusStyle}">${p.status}</span></td>
+                <td style="text-align:right;"><div style="display:flex; justify-content:flex-end; gap:6px;">${actionButtons}</div></td>
             </tr>
         `;
     });
@@ -196,17 +198,23 @@ async function viewRequests(projectId) {
     const content = document.getElementById('requestsBody');
     panel.style.display = 'block';
     
-    content.innerHTML = reqs.length ? '<ul style="list-style:none; padding:0;">' + reqs.map(r => `
-        <li style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-            <div><b>${r.username}</b> (${r.email}) - <small>${r.status}</small></div>
+    content.innerHTML = reqs.length ? '<div style="display:flex; flex-direction:column; gap:10px; margin-top:15px;">' + reqs.map(r => `
+        <div style="background:white; padding:15px; border-radius:10px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="font-weight:600; color:var(--text-main);">${r.username}</div>
+                <div style="font-size:12px; color:var(--text-muted);">${r.email}</div>
+                <div style="margin-top:4px;"><span class="badge" style="font-size:9px; background:#f1f5f9;">${r.status}</span></div>
+            </div>
             ${r.status === 'PENDING' ? `
-                <div>
-                    <button class="btn btn-success btn-sm" onclick="changeRequestStatus('${r.project_id}','${r.user_id}','APPROVED')">Duyệt</button>
-                    <button class="btn btn-sm" style="background:red;color:white" onclick="changeRequestStatus('${r.project_id}','${r.user_id}','REJECTED')">Từ chối</button>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-success btn-sm" onclick="changeRequestStatus('${r.project_id}','${r.user_id}','APPROVED')"><i class="ph ph-user-plus"></i> Chấp nhận</button>
+                    <button class="btn btn-danger btn-sm" onclick="changeRequestStatus('${r.project_id}','${r.user_id}','REJECTED')"><i class="ph ph-user-minus"></i> Từ chối</button>
                 </div>
             ` : ''}
-        </li>
-    `).join('') + '</ul>' : "Chưa có sinh viên nào đăng ký tham gia đề tài này.";
+        </div>
+    `).join('') + '</div>' : "<div style='text-align:center; padding:20px; color:var(--text-muted);'>Chưa có sinh viên nào đăng ký tham gia đề tài này.</div>";
+    
+    panel.scrollIntoView({ behavior: 'smooth' });
 }
 
 async function changeRequestStatus(pId, uId, status) {
