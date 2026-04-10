@@ -3,6 +3,8 @@ const API_URL = "http://localhost:8000/api";
 
 // Biến lưu tạm danh sách đề tài để dùng cho việc Edit
 let currentProjects = [];
+// Lưu danh sách yêu cầu của sinh viên đang đăng nhập
+let myRequests = [];
 
 // ===== XỬ LÝ LOGIN =====
 const loginForm = document.getElementById('loginForm');
@@ -53,6 +55,10 @@ function checkAuthAndLoadData() {
 
     if (role === 'ADMIN') document.getElementById('adminPanel').style.display = 'block';
     if (role === 'TEACHER') document.getElementById('teacherPanel').style.display = 'block';
+    if (role === 'STUDENT') {
+        document.getElementById('studentPanel').style.display = 'block';
+        loadStudentRequests();
+    }
 
     loadProjects();
 }
@@ -104,7 +110,12 @@ async function loadProjects() {
         }
         
         if (role === 'STUDENT') {
-            actionButtons += `<button class="btn btn-success btn-sm" onclick="applyProject('${p.id}')"><i class="ph ph-paper-plane-tilt"></i> Xin tham gia</button>`;
+            const hasApplied = myRequests.some(r => r.project_id === p.id);
+            if (hasApplied) {
+                actionButtons += `<button class="btn btn-secondary btn-sm" disabled><i class="ph ph-check-circle"></i> Đã đăng ký</button>`;
+            } else {
+                actionButtons += `<button class="btn btn-success btn-sm" onclick="applyProject('${p.id}')"><i class="ph ph-paper-plane-tilt"></i> Xin tham gia</button>`;
+            }
         }
 
         const statusStyle = p.status === 'APPROVED' ? 'background:#dcfce7; color:#166534;' : 
@@ -187,8 +198,36 @@ async function createProject() {
 // Sinh viên xin tham gia
 async function applyProject(projectId) {
     const out = await fetchAPI('/requests', { method: 'POST', body: JSON.stringify({project_id: projectId}) });
-    if(out.success) alert("Đã gửi yêu cầu tham gia!");
-    else alert(out.message || "Lỗi gửi yêu cầu");
+    if(out.success) {
+        alert("Đã gửi yêu cầu tham gia!");
+        await loadStudentRequests();
+        await loadProjects();
+    } else {
+        alert(out.message || "Lỗi gửi yêu cầu");
+    }
+}
+
+// Lấy danh sách đăng ký của sinh viên
+async function loadStudentRequests() {
+    const reqs = await fetchAPI('/requests/student');
+    myRequests = reqs;
+    const body = document.getElementById('studentRequestsBody');
+    if (!body) return;
+    
+    body.innerHTML = reqs.length ? reqs.map(r => {
+        const statusStyle = r.status === 'APPROVED' ? 'background:#dcfce7; color:#166534;' : 
+                            r.status === 'REJECTED' ? 'background:#fee2e2; color:#991b1b;' : 
+                            'background:#fef3c7; color:#92400e;';
+        
+        return `
+            <tr>
+                <td style="font-weight:600;">${r.title}</td>
+                <td><i class="ph ph-user-circle"></i> ${r.leader_name}</td>
+                <td style="font-size:12px; color:var(--text-muted);">${new Date(r.joined_at).toLocaleDateString('vi-VN')}</td>
+                <td><span class="badge" style="${statusStyle}">${r.status}</span></td>
+            </tr>
+        `;
+    }).join('') : `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Bạn chưa đăng ký đề tài nào.</td></tr>`;
 }
 
 // Giảng viên duyệt sinh viên

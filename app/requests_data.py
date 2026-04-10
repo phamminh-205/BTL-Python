@@ -62,3 +62,23 @@ def update_request_status(project_id, member_id):
     conn.commit()
     conn.close()
     return jsonify({"success": True})
+@requests_bp.route("/api/requests/student", methods=["GET"])
+def get_student_requests():
+    user_id = request.headers.get("X-User-Id")
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("""
+        SELECT pm.project_id, pm.status, pm.joined_at, p.title, u.username as leader_name
+        FROM project_members pm 
+        JOIN projects p ON pm.project_id = p.id 
+        JOIN users u ON p.leader_id = u.id
+        WHERE pm.user_id = %s
+    """, (user_id,))
+    reqs = cursor.fetchall()
+    conn.close()
+
+    for r in reqs:
+        r['project_id'] = str(r['project_id'])
+        if r['joined_at']: r['joined_at'] = str(r['joined_at'])
+        
+    return jsonify(reqs)
