@@ -854,21 +854,179 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 // ══════════════════════════════════════════════════════════════════
-// PAGE: ADMIN — CATALOG
+// PAGE: ADMIN/STAFF — CATALOG
 // ══════════════════════════════════════════════════════════════════
+
+const CATALOG_CONFIGS = {
+  'departments': {
+    title: 'Khoa / Phòng',
+    cols: [{k:'name', label:'Tên'}, {k:'code', label:'Mã'}],
+    schema: [{k:'name', label:'Tên *', type:'text', req:true}, {k:'code', label:'Mã *', type:'text', req:true}]
+  },
+  'research-fields': {
+    title: 'Lĩnh vực nghiên cứu',
+    cols: [{k:'name', label:'Tên'}, {k:'code', label:'Mã'}],
+    schema: [{k:'name', label:'Tên *', type:'text', req:true}, {k:'code', label:'Mã *', type:'text', req:true}]
+  },
+  'proposal-categories': {
+    title: 'Loại đề tài',
+    cols: [{k:'name', label:'Tên'}, {k:'level', label:'Cấp'}, {k:'max_duration_months', label:'T.gian Tối đa'}],
+    schema: [
+      {k:'name', label:'Tên *', type:'text', req:true}, {k:'code', label:'Mã *', type:'text', req:true},
+      {k:'level', label:'Cấp *', type:'select', req:true, opts:[{v:'UNIVERSITY',l:'Cấp Trường'}, {v:'FACULTY',l:'Cấp Khoa'}, {v:'MINISTERIAL',l:'Cấp Bộ'}]},
+      {k:'max_duration_months', label:'TG tối đa (tháng)', type:'number'},
+      {k:'description', label:'Mô tả', type:'textarea'}
+    ]
+  },
+  'council-types': {
+    title: 'Loại hội đồng',
+    cols: [{k:'name', label:'Tên'}, {k:'code', label:'Mã'}],
+    schema: [{k:'name', label:'Tên *', type:'text', req:true}, {k:'code', label:'Mã *', type:'text', req:true}, {k:'description', label:'Mô tả', type:'textarea'}]
+  },
+  'evaluation-criteria': {
+    title: 'Mẫu tiêu chí ĐG',
+    cols: [{k:'name', label:'Tên'}],
+    schema: [{k:'name', label:'Tên *', type:'text', req:true}, {k:'description', label:'Mô tả', type:'textarea'}]
+  },
+  'proposal-statuses': {
+    title: 'Cấu hình trạng thái',
+    cols: [{k:'name', label:'Tên'}, {k:'code', label:'Mã'}],
+    schema: [{k:'name', label:'Tên *', type:'text', req:true}, {k:'code', label:'Mã *', type:'text', req:true}, {k:'description', label:'Mô tả', type:'textarea'}]
+  }
+};
+
+let _currentCatalog = 'departments';
+let _catPage = 1;
+let _catEditId = null;
+
 registerPage('catalog', async () => {
-  const el = document.getElementById('page-catalog');
-  const [fields, cats] = await Promise.all([
-    API.get('/catalog/research-fields'),
-    API.get('/catalog/proposal-categories'),
-  ]);
-  el.innerHTML = `<div class="section-header"><h2>Danh mục</h2></div>
-    <div class="card"><h3>Lĩnh vực nghiên cứu</h3>
-      <table><thead><tr><th>Tên</th><th>Mã</th></tr></thead>
-      <tbody>${fields.map(f => `<tr><td>${f.name}</td><td>${f.code}</td></tr>`).join('')}</tbody></table>
-    </div>
-    <div class="card"><h3>Loại đề tài</h3>
-      <table><thead><tr><th>Tên</th><th>Cấp</th><th>TG tối đa</th></tr></thead>
-      <tbody>${cats.map(c => `<tr><td>${c.name}</td><td>${c.level}</td><td>${c.max_duration_months||'—'} tháng</td></tr>`).join('')}</tbody></table>
-    </div>`;
+  renderCatalogNav();
+  document.getElementById('catalog-search').oninput = debounce(() => { _catPage=1; loadCatalogData(); }, 400);
+  document.getElementById('catalog-status').onchange = () => { _catPage=1; loadCatalogData(); };
+  document.getElementById('btn-add-catalog').onclick = () => openCatalogForm(null);
+  
+  document.getElementById('form-catalog').onsubmit = handleCatalogSubmit;
+  
+  await changeCatalogTab('departments');
 });
+
+function debounce(func, wait) {
+  let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func(...args), wait); };
+}
+
+function renderCatalogNav() {
+  const ul = document.getElementById('catalog-nav');
+  ul.innerHTML = Object.entries(CATALOG_CONFIGS).map(([k, v]) => `
+    <li style="margin-bottom:8px">
+      <a href="#" class="btn btn-sm ${k === _currentCatalog ? 'btn-primary' : 'btn-secondary'}" 
+         style="display:block; text-align:left; border-radius:4px"
+         onclick="changeCatalogTab('${k}')">${v.title}</a>
+    </li>
+  `).join('');
+}
+
+async function changeCatalogTab(key) {
+  _currentCatalog = key;
+  _catPage = 1;
+  document.getElementById('catalog-search').value = '';
+  document.getElementById('catalog-status').value = '';
+  renderCatalogNav();
+  await loadCatalogData();
+}
+
+async function loadCatalogData() {
+  const cfg = CATALOG_CONFIGS[_currentCatalog];
+  const search = document.getElementById('catalog-search').value.trim();
+  const isActive = document.getElementById('catalog-status').value;
+  
+  const thead = document.getElementById('catalog-table-head');
+  const tbody = document.getElementById('catalog-table-body');
+  
+  thead.innerHTML = `<tr>${cfg.cols.map(c => `<th>${c.label}</th>`).join('')}<th>Trạng thái</th><th>Hành động</th></tr>`;
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center">Đang tải...</td></tr>';
+  
+  try {
+    const res = await API.getCatalogs(_currentCatalog, { page: _catPage, size: 10, search, is_active: isActive });
+    if (!res.items.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center" class="empty">Không tìm thấy dữ liệu.</td></tr>';
+    } else {
+      tbody.innerHTML = res.items.map(item => `
+        <tr style="${!item.is_active ? 'opacity:0.6' : ''}">
+          ${cfg.cols.map(c => `<td>${item[c.k] || '—'}</td>`).join('')}
+          <td>${item.is_active ? badge('ACTIVE') : badge('DISABLED')}</td>
+          <td>
+            <button class="btn btn-sm btn-secondary" onclick='openCatalogForm(${JSON.stringify(item)})'>Sửa</button>
+            ${item.is_active ? `<button class="btn btn-sm btn-danger" onclick="deleteCatalogItem('${item.id}')">Vô hiệu hóa</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+    
+    // Pagination
+    const totalPages = Math.ceil(res.total / 10);
+    let phtml = '';
+    for(let i=1; i<=totalPages; i++) {
+      phtml += `<button class="btn btn-sm ${i===_catPage?'btn-primary':'btn-secondary'}" onclick="gotoCatalogPage(${i})">${i}</button>`;
+    }
+    document.getElementById('catalog-pagination').innerHTML = phtml;
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="10" class="alert alert-error">${e.message}</td></tr>`;
+  }
+}
+
+function gotoCatalogPage(p) { _catPage = p; loadCatalogData(); }
+
+function openCatalogForm(item) {
+  _catEditId = item ? item.id : null;
+  const cfg = CATALOG_CONFIGS[_currentCatalog];
+  document.getElementById('modal-catalog-title').textContent = (item ? 'Sửa ' : 'Tạo mới ') + cfg.title;
+  
+  let html = '';
+  cfg.schema.forEach(s => {
+    const val = item ? (item[s.k] || '') : '';
+    html += `<div class="form-group"><label>${s.label}</label>`;
+    if (s.type === 'select') {
+      html += `<select name="${s.k}" ${s.req?'required':''}>
+        <option value="">— Chọn —</option>
+        ${s.opts.map(o => `<option value="${o.v}" ${val===o.v?'selected':''}>${o.l}</option>`).join('')}
+      </select>`;
+    } else if (s.type === 'textarea') {
+      html += `<textarea name="${s.k}" ${s.req?'required':''}>${val}</textarea>`;
+    } else {
+      html += `<input type="${s.type}" name="${s.k}" value="${val}" ${s.req?'required':''}>`;
+    }
+    html += `</div>`;
+  });
+  
+  if (item) {
+    html += `<div class="form-group"><label>Trạng thái hoạt động</label>
+      <select name="is_active"><option value="true" ${item.is_active?'selected':''}>Có</option><option value="false" ${!item.is_active?'selected':''}>Không</option></select>
+    </div>`;
+  }
+  
+  document.getElementById('modal-catalog-body').innerHTML = html;
+  openModal('modal-catalog');
+}
+
+async function handleCatalogSubmit(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const data = Object.fromEntries(fd.entries());
+  if (data.is_active !== undefined) data.is_active = data.is_active === 'true';
+  
+  try {
+    if (_catEditId) await API.updateCatalog(_currentCatalog, _catEditId, data);
+    else await API.createCatalog(_currentCatalog, data);
+    
+    closeModal('modal-catalog');
+    loadCatalogData();
+  } catch(err) { alert(err.message); }
+}
+
+async function deleteCatalogItem(id) {
+  if (!confirm('Bạn có chắc muốn vô hiệu hóa mục này? Các chức năng đang sử dụng sẽ không bị ảnh hưởng, nhưng sẽ không thể chọn mới.')) return;
+  try {
+    await API.deleteCatalog(_currentCatalog, id);
+    loadCatalogData();
+  } catch(err) { alert(err.message); }
+}

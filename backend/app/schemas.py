@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Optional, Any
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
@@ -155,6 +155,113 @@ class ProposalCategoryResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+class DepartmentListResponse(BaseModel):
+    items: List[DepartmentResponse]
+    total: int
+    page: int
+    size: int
+
+
+class ResearchFieldListResponse(BaseModel):
+    items: List[ResearchFieldResponse]
+    total: int
+    page: int
+    size: int
+
+
+class ProposalCategoryListResponse(BaseModel):
+    items: List[ProposalCategoryResponse]
+    total: int
+    page: int
+    size: int
+
+
+# -- EvaluationCriteriaTemplate --
+class EvaluationCriteriaCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=300)
+    description: Optional[str] = None
+    criteria_json: List[Any] = Field(default_factory=list)
+
+class EvaluationCriteriaUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=300)
+    description: Optional[str] = None
+    criteria_json: Optional[List[Any]] = None
+    is_active: Optional[bool] = None
+
+class EvaluationCriteriaResponse(BaseModel):
+    id: UUID
+    name: str
+    description: Optional[str]
+    criteria_json: List[Any]
+    is_active: bool
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+class EvaluationCriteriaListResponse(BaseModel):
+    items: List[EvaluationCriteriaResponse]
+    total: int
+    page: int
+    size: int
+
+
+# -- CouncilTypeCatalog --
+class CouncilTypeCatalogCreate(BaseModel):
+    code: str = Field(..., min_length=2, max_length=50)
+    name: str = Field(..., min_length=2, max_length=200)
+    description: Optional[str] = None
+
+class CouncilTypeCatalogUpdate(BaseModel):
+    code: Optional[str] = Field(None, min_length=2, max_length=50)
+    name: Optional[str] = Field(None, min_length=2, max_length=200)
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class CouncilTypeCatalogResponse(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    description: Optional[str]
+    is_active: bool
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+class CouncilTypeCatalogListResponse(BaseModel):
+    items: List[CouncilTypeCatalogResponse]
+    total: int
+    page: int
+    size: int
+
+
+# -- ProposalStatusCatalog --
+class ProposalStatusCatalogCreate(BaseModel):
+    code: str = Field(..., min_length=2, max_length=50)
+    name: str = Field(..., min_length=2, max_length=200)
+    description: Optional[str] = None
+    next_steps_json: List[Any] = Field(default_factory=list)
+
+class ProposalStatusCatalogUpdate(BaseModel):
+    code: Optional[str] = Field(None, min_length=2, max_length=50)
+    name: Optional[str] = Field(None, min_length=2, max_length=200)
+    description: Optional[str] = None
+    next_steps_json: Optional[List[Any]] = None
+    is_active: Optional[bool] = None
+
+class ProposalStatusCatalogResponse(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    description: Optional[str]
+    next_steps_json: List[Any]
+    is_active: bool
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+class ProposalStatusCatalogListResponse(BaseModel):
+    items: List[ProposalStatusCatalogResponse]
+    total: int
+    page: int
+    size: int
 
 # ══════════════════════════════════════════════════════════════════
 # REGISTRATION PERIOD

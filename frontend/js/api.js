@@ -65,6 +65,19 @@ const API = (() => {
     put:    (p, b) => request('PUT',    p, b),
     delete: (p)    => request('DELETE', p),
 
+    // Catalog specific (Generic)
+    getCatalogs: (type, params) => {
+      const q = new URLSearchParams();
+      if(params.page) q.append('page', params.page);
+      if(params.size) q.append('size', params.size);
+      if(params.search) q.append('search', params.search);
+      if(params.is_active !== undefined && params.is_active !== '') q.append('is_active', params.is_active);
+      return request('GET', `/catalog/${type}?${q.toString()}`);
+    },
+    createCatalog: (type, data) => request('POST', `/catalog/${type}`, data),
+    updateCatalog: (type, id, data) => request('PUT', `/catalog/${type}/${id}`, data),
+    deleteCatalog: (type, id) => request('DELETE', `/catalog/${type}/${id}`),
+
     login: async (email, password) => {
       const data = await request('POST', '/auth/login', { email, password });
       setToken(data.access_token, data.refresh_token);

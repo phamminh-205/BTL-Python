@@ -46,8 +46,35 @@
     <div id="page-my-acceptance" id="page" style="display:none"></div>
 
     <!-- Admin pages -->
-    <div id="page-users" id="page" style="display:none"></div>
-    <div id="page-catalog" id="page" style="display:none"></div>
+    <div id="page-users" class="page" style="display:none"></div>
+    <div id="page-catalog" class="page" style="display:none">
+      <div style="display:flex; gap:20px;">
+        <div style="width:250px;">
+          <h3>Quản lý danh mục</h3>
+          <ul id="catalog-nav" style="list-style:none; padding:0;">
+            <!-- Render via JS -->
+          </ul>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+            <div style="display:flex; gap:10px;">
+              <input type="text" id="catalog-search" placeholder="Tìm kiếm..." style="padding:6px;border:1px solid #ccc;border-radius:4px;">
+              <select id="catalog-status" style="padding:6px;border:1px solid #ccc;border-radius:4px;">
+                <option value="">Tất cả trạng thái</option>
+                <option value="true">Đang hoạt động</option>
+                <option value="false">Đã vô hiệu hóa</option>
+              </select>
+            </div>
+            <button id="btn-add-catalog" class="btn btn-primary">+ Thêm mới</button>
+          </div>
+          <table class="table" style="width:100%">
+            <thead id="catalog-table-head"></thead>
+            <tbody id="catalog-table-body"></tbody>
+          </table>
+          <div id="catalog-pagination" style="margin-top:12px; display:flex; justify-content:center; gap:8px;"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -179,6 +206,22 @@
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal('modal-user')">Hủy</button>
         <button type="submit" class="btn btn-primary">Tạo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Reusable Catalog form modal -->
+<div id="modal-catalog" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="modal-catalog-title">Tạo mới</h3>
+    <form id="form-catalog">
+      <div id="modal-catalog-body">
+        <!-- Render inputs via JS -->
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-catalog')">Hủy</button>
+        <button type="submit" class="btn btn-primary">Lưu</button>
       </div>
     </form>
   </div>
