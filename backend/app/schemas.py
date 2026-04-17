@@ -331,6 +331,7 @@ class ProposalCreate(BaseModel):
     field_id: Optional[UUID] = None
     category_id: Optional[UUID] = None
     period_id: Optional[UUID] = None
+    attachment_url: Optional[str] = Field(None, max_length=500)
     member_ids: Optional[List[UUID]] = []
     submit: bool = False
 
@@ -346,6 +347,7 @@ class ProposalUpdate(BaseModel):
     field_id: Optional[UUID] = None
     category_id: Optional[UUID] = None
     period_id: Optional[UUID] = None
+    attachment_url: Optional[str] = Field(None, max_length=500)
     member_ids: Optional[List[UUID]] = None
 
 
@@ -358,6 +360,7 @@ class ProposalResponse(BaseModel):
     expected_outcomes: Optional[str]
     duration_months: Optional[int]
     budget_estimated: Optional[Decimal]
+    attachment_url: Optional[str] = None
     status: str
     revision_reason: Optional[str]
     pi_id: UUID

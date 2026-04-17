@@ -270,6 +270,83 @@ def seed():
         db.flush()
         print(f"  ✅ {len(periods)} registration periods")
 
+        # ── 8. Proposals ───────────────────────────────────────────
+        from app.models.proposal import Proposal, ProposalStatusHistory
+        from datetime import datetime, timezone
+        import uuid
+
+        mock_proposals = [
+            Proposal(
+                title="Nghiên cứu ứng dụng Trí tuệ nhân tạo trong chẩn đoán hình ảnh y khoa",
+                summary="Đề tài tập trung vào việc sử dụng deep learning để phân tích X-Quang phổi...",
+                objectives="Xây dựng mô hình CNN với độ chính xác >90%",
+                methodology="Thu thập dữ liệu, huấn luyện mô hình ResNet50, thử nghiệm lâm sàng.",
+                expected_outcomes="01 bài báo quốc tế, 01 phần mềm thử nghiệm",
+                duration_months=12,
+                budget_estimated=150000000,
+                pi_id=users[4].id, # faculty1
+                department_id=departments[0].id,
+                field_id=fields[0].id,
+                category_id=categories[0].id,
+                period_id=periods[0].id,
+                status="SUBMITTED",
+                attachment_url="https://example.com/docs/ai-medical-proposal.pdf",
+                submitted_at=datetime.now(timezone.utc)
+            ),
+            Proposal(
+                title="Phát triển hệ thống IoT giám sát chất lượng không khí trong trường học",
+                summary="Thiết kế và triển khai mạng lưới cảm biến IoT...",
+                objectives="Đo lường PM2.5, CO2 theo thời gian thực",
+                methodology="Sử dụng vi điều khiển ESP32 và giao thức MQTT.",
+                expected_outcomes="Hệ thống phần cứng và dashboard giám sát",
+                duration_months=6,
+                budget_estimated=50000000,
+                pi_id=users[5].id, # faculty2
+                department_id=departments[1].id,
+                field_id=fields[1].id,
+                category_id=categories[1].id,
+                period_id=periods[0].id,
+                status="DRAFT",
+            ),
+            Proposal(
+                title="Đánh giá tác động của kinh tế số đến các doanh nghiệp vừa và nhỏ",
+                summary="Phân tích sự thay đổi trong mô hình kinh doanh khi áp dụng chuyển đổi số...",
+                objectives="Đưa ra bộ chỉ số đánh giá mức độ sẵn sàng chuyển đổi số",
+                methodology="Khảo sát định lượng và phỏng vấn chuyên sâu.",
+                expected_outcomes="Báo cáo phân tích và cẩm nang hướng dẫn",
+                duration_months=12,
+                budget_estimated=80000000,
+                pi_id=users[6].id, # faculty3
+                department_id=departments[3].id,
+                field_id=fields[6].id,
+                category_id=categories[0].id,
+                period_id=periods[0].id,
+                status="REVISION_REQUESTED",
+                revision_reason="Vui lòng bổ sung chi tiết phần phương pháp chọn mẫu khảo sát.",
+                attachment_url="https://example.com/docs/kinh-te-so.docx",
+            ),
+            Proposal(
+                title="Nghiên cứu vật liệu nano ứng dụng trong xử lý nước thải",
+                summary="Tổng hợp vật liệu nano composit tiên tiến để hấp phụ kim loại nặng...",
+                objectives="Tối ưu hóa quy trình tổng hợp và thử nghiệm hiệu suất",
+                methodology="Phương pháp đồng kết tủa và đánh giá isotherm",
+                expected_outcomes="01 quy trình công nghệ, 02 bài báo trong nước",
+                duration_months=24,
+                budget_estimated=300000000,
+                pi_id=users[4].id, # faculty1
+                department_id=departments[7].id,
+                field_id=fields[5].id,
+                category_id=categories[2].id,
+                period_id=periods[0].id,
+                status="VALIDATED",
+                attachment_url="https://example.com/docs/vat-lieu-nano.pdf",
+                submitted_at=datetime.now(timezone.utc)
+            )
+        ]
+        db.add_all(mock_proposals)
+        db.flush()
+        print(f"  ✅ {len(mock_proposals)} proposals")
+
         db.commit()
         print()
         print("🎉 Seed data inserted successfully!")

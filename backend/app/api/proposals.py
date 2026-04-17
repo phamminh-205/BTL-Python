@@ -50,6 +50,7 @@ def _resp(p: Proposal) -> ProposalResponse:
         id=p.id, title=p.title, summary=p.summary, objectives=p.objectives,
         methodology=p.methodology, expected_outcomes=p.expected_outcomes,
         duration_months=p.duration_months, budget_estimated=p.budget_estimated,
+        attachment_url=p.attachment_url,
         status=p.status, revision_reason=p.revision_reason,
         pi_id=p.pi_id, pi_name=pi.full_name if pi else None,
         department_id=p.department_id,
@@ -132,6 +133,14 @@ async def get_proposal(proposal_id: UUID, current_user: User = Depends(get_curre
     return _resp(p)
 
 
+@router.get("/stats/faculty")
+async def get_faculty_stats(current_user: User = Depends(require_roles("FACULTY")), db: Session = Depends(get_db)):
+    """Lấy số lượng đề tài theo từng trạng thái của giảng viên."""
+    from sqlalchemy import func
+    stats = db.query(Proposal.status, func.count(Proposal.id)).filter(Proposal.pi_id == current_user.id).group_by(Proposal.status).all()
+    return {"stats": {status: count for status, count in stats}}
+
+
 # ── Create / Update / Delete ──────────────────────────────────────
 
 @router.post("/", response_model=ProposalResponse, status_code=201)
@@ -156,6 +165,7 @@ async def create_proposal(
         title=body.title, summary=body.summary, objectives=body.objectives,
         methodology=body.methodology, expected_outcomes=body.expected_outcomes,
         duration_months=body.duration_months, budget_estimated=body.budget_estimated,
+        attachment_url=body.attachment_url,
         field_id=body.field_id, category_id=body.category_id, period_id=body.period_id,
         pi_id=current_user.id, department_id=current_user.department_id,
         status=target, submitted_at=datetime.now(timezone.utc) if body.submit else None,

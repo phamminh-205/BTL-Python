@@ -28,6 +28,7 @@ class Proposal(Base):
     expected_outcomes = Column(Text, nullable=True)
     duration_months = Column(Integer, nullable=True)
     budget_estimated = Column(Numeric(15, 2), nullable=True)  # VND, for future finance module
+    attachment_url = Column(String(500), nullable=True)
 
     # Foreign keys
     pi_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)

@@ -83,9 +83,28 @@ function buildNav(role) {
 registerPage('dashboard', async () => {
   const el = document.getElementById('page-dashboard');
   const user = API.getUser();
+  
+  let facultyStatsHtml = '';
+  if (user.role === 'FACULTY') {
+    try {
+      const stats = await API.get('/proposals/stats/faculty');
+      const s = stats.stats || {};
+      facultyStatsHtml = `
+        <h4 style="margin-top:20px">Thống kê đề tài</h4>
+        <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
+          <div class="card" style="flex:1;min-width:120px;text-align:center"><h3>${s['DRAFT']||0}</h3><p>Bản nháp</p></div>
+          <div class="card" style="flex:1;min-width:120px;text-align:center"><h3>${s['SUBMITTED']||0}</h3><p>Đã nộp</p></div>
+          <div class="card" style="flex:1;min-width:120px;text-align:center"><h3>${(s['REVISION_REQUESTED']||0)}</h3><p>Cần sửa</p></div>
+          <div class="card" style="flex:1;min-width:120px;text-align:center"><h3>${s['VALIDATED']||0}</h3><p>Hợp lệ</p></div>
+          <div class="card" style="flex:1;min-width:120px;text-align:center"><h3>${s['APPROVED']||0}</h3><p>Đã duyệt</p></div>
+        </div>`;
+    } catch(e) { console.error('Failed to load stats', e); }
+  }
+
   el.innerHTML = `<div class="card"><h3>Chào mừng, ${user.full_name}!</h3>
     <p>Vai trò: <strong>${user.role}</strong> | Email: ${user.email}</p>
-    <p>Sử dụng menu bên trái để điều hướng.</p></div>`;
+    <p>Sử dụng menu bên trái để điều hướng.</p></div>
+    ${facultyStatsHtml}`;
 });
 
 
@@ -113,7 +132,10 @@ async function loadMyProposals() {
           <td>${fmtDateShort(p.created_at)}</td>
           <td>
             <button class="btn btn-sm btn-secondary" onclick="viewProposal('${p.id}')">Xem</button>
-            ${p.status === 'DRAFT' || p.status === 'REVISION_REQUESTED' ? `<button class="btn btn-sm btn-primary" onclick="submitProposal('${p.id}')">Nộp</button>` : ''}
+            ${p.status === 'DRAFT' || p.status === 'REVISION_REQUESTED' ? `
+              <button class="btn btn-sm btn-warning" onclick="editProposal('${p.id}')">Sửa</button>
+              <button class="btn btn-sm btn-primary" onclick="submitProposal('${p.id}')">Nộp</button>
+            ` : ''}
           </td>
         </tr>`).join('')}
       </tbody></table>`;
@@ -149,6 +171,7 @@ async function viewProposal(id) {
       <p><b>Lĩnh vực:</b> ${p.field_name||'—'} | <b>Loại:</b> ${p.category_name||'—'}</p>
       <p><b>Thời gian:</b> ${p.duration_months||'—'} tháng</p>
       <p><b>Tóm tắt:</b> ${p.summary||'—'}</p>
+      ${p.attachment_url ? `<p><b>Tài liệu đính kèm:</b> <a href="${p.attachment_url}" target="_blank">Tải xuống / Xem</a></p>` : ''}
       ${p.revision_reason ? `<p><b style="color:red">Lý do trả về:</b> ${p.revision_reason}</p>` : ''}
       ${reviewHtml}
       <h4 style="margin:12px 0 6px">Lịch sử trạng thái</h4>
@@ -194,6 +217,7 @@ registerPage('create-proposal', async () => {
           </select></div>
           <div class="form-group"><label>Thời gian (tháng) *</label><input name="duration_months" type="number" min="1" max="36"></div>
         </div>
+        <div class="form-group"><label>Tài liệu đính kèm (URL)</label><input name="attachment_url" placeholder="https://..."></div>
         <div class="form-group"><label>Tóm tắt</label><textarea name="summary" rows="3"></textarea></div>
         <div class="form-group"><label>Mục tiêu</label><textarea name="objectives" rows="3"></textarea></div>
         <div class="form-group"><label>Phương pháp</label><textarea name="methodology" rows="3"></textarea></div>
@@ -219,6 +243,7 @@ registerPage('create-proposal', async () => {
       field_id: fd.get('field_id') || null,
       category_id: fd.get('category_id') || null,
       duration_months: fd.get('duration_months') ? parseInt(fd.get('duration_months')) : null,
+      attachment_url: fd.get('attachment_url') || null,
       summary: fd.get('summary') || null,
       objectives: fd.get('objectives') || null,
       methodology: fd.get('methodology') || null,
@@ -229,7 +254,65 @@ registerPage('create-proposal', async () => {
       await API.post('/proposals', body);
       showMsg(document.getElementById('msg-create'), 'Tạo đề tài thành công!', 'success');
       e.target.reset();
+      navigate('my-proposals');
     } catch(err) { showMsg(document.getElementById('msg-create'), err.message); }
+  });
+});
+
+// Edit Proposal Modal Logic
+async function editProposal(id) {
+  try {
+    const p = await API.get(`/proposals/${id}`);
+    const [fields, categories, periods] = await Promise.all([
+      API.get('/catalog/research-fields'),
+      API.get('/catalog/proposal-categories'),
+      API.get('/periods?status=OPEN'),
+    ]);
+    
+    document.getElementById('edit-prop-id').value = p.id;
+    document.getElementById('edit-prop-title').value = p.title || '';
+    document.getElementById('edit-prop-duration').value = p.duration_months || '';
+    document.getElementById('edit-prop-attachment').value = p.attachment_url || '';
+    document.getElementById('edit-prop-summary').value = p.summary || '';
+    document.getElementById('edit-prop-objectives').value = p.objectives || '';
+    document.getElementById('edit-prop-methodology').value = p.methodology || '';
+    document.getElementById('edit-prop-outcomes').value = p.expected_outcomes || '';
+    
+    const periodSel = document.getElementById('edit-prop-period');
+    periodSel.innerHTML = `<option value="">— Chọn —</option>` + periods.map(x => `<option value="${x.id}" ${p.period_id === x.id ? 'selected':''}>${x.title}</option>`).join('');
+    
+    const fieldSel = document.getElementById('edit-prop-field');
+    fieldSel.innerHTML = `<option value="">— Chọn —</option>` + fields.map(x => `<option value="${x.id}" ${p.field_id === x.id ? 'selected':''}>${x.name}</option>`).join('');
+    
+    const catSel = document.getElementById('edit-prop-category');
+    catSel.innerHTML = `<option value="">— Chọn —</option>` + categories.map(x => `<option value="${x.id}" ${p.category_id === x.id ? 'selected':''}>${x.name}</option>`).join('');
+
+    openModal('modal-edit-proposal');
+  } catch(e) { alert(e.message); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('edit-proposal-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const body = {
+      title: fd.get('title'),
+      period_id: fd.get('period_id') || null,
+      field_id: fd.get('field_id') || null,
+      category_id: fd.get('category_id') || null,
+      duration_months: fd.get('duration_months') ? parseInt(fd.get('duration_months')) : null,
+      attachment_url: fd.get('attachment_url') || null,
+      summary: fd.get('summary') || null,
+      objectives: fd.get('objectives') || null,
+      methodology: fd.get('methodology') || null,
+      expected_outcomes: fd.get('expected_outcomes') || null,
+    };
+    try {
+      await API.put(`/proposals/${fd.get('id')}`, body);
+      closeModal('modal-edit-proposal');
+      showMsg(document.getElementById('msg-proposals'), 'Cập nhật đề xuất thành công!', 'success');
+      if (typeof loadMyProposals === 'function') await loadMyProposals();
+    } catch(err) { showMsg(document.getElementById('msg-edit-proposal'), err.message); }
   });
 });
 
