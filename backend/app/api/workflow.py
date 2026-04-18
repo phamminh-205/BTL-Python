@@ -108,15 +108,21 @@ async def my_reviews(
     )
     return [
         ReviewResponse(
-            id=r.id, council_id=r.council_id, proposal_id=r.proposal_id,
-            proposal_title=r.proposal.title if r.proposal else "N/A",
+            id=r.id,
+            council_id=r.council_id,
+            proposal_id=r.proposal_id,
+            proposal_title=getattr(r.proposal, 'title', 'N/A') if r.proposal else "N/A",
             reviewer_id=r.reviewer_id,
-            reviewer_name=r.reviewer.full_name if r.reviewer else "N/A",
-            score=r.score, comments=r.comments, verdict=r.verdict,
+            reviewer_name=getattr(r.reviewer, 'full_name', 'N/A') if r.reviewer else "N/A",
+            score=r.score,
+            comments=r.comments,
+            verdict=r.verdict,
             criteria_scores=r.criteria_scores,
-            status=r.status, reviewed_at=r.reviewed_at, created_at=r.created_at,
+            status=r.status,
+            reviewed_at=r.reviewed_at,
+            created_at=r.created_at,
         )
-        for r in reviews
+        for r in reviews if r
     ]
 
 
