@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from app.database import SessionLocal, engine, Base
 from app.models.role import Role
 from app.models.user import User
-from app.models.catalog import Department, ResearchField, ProposalCategory
+from app.models.catalog import Department, ResearchField, ProposalCategory, EvaluationCriteriaTemplate
 from app.models.approval import ApprovalStep
 from app.models.period import RegistrationPeriod
 from app.core.security import hash_password
@@ -106,6 +106,33 @@ def seed():
         db.add_all(categories)
         db.flush()
         print(f"  ✅ {len(categories)} proposal categories")
+
+        # ── 4.1 Evaluation Criteria Templates ───────────────
+        templates = [
+            EvaluationCriteriaTemplate(
+                name="Tiêu chí đánh giá đề tài cấp trường",
+                description="Dùng cho hội đồng phản biện đề tài nghiên cứu khoa học cấp trường",
+                criteria_json=[
+                    {"id": "c1", "label": "Tính cấp thiết và mục tiêu nghiên cứu", "max_score": 20},
+                    {"id": "c2", "label": "Tổng quan tình hình nghiên cứu", "max_score": 15},
+                    {"id": "c3", "label": "Phương pháp nghiên cứu", "max_score": 25},
+                    {"id": "c4", "label": "Khả năng ứng dụng và hiệu quả", "max_score": 20},
+                    {"id": "c5", "label": "Năng lực của nhóm nghiên cứu", "max_score": 20},
+                ]
+            ),
+            EvaluationCriteriaTemplate(
+                name="Tiêu chí đánh giá đề tài cấp khoa",
+                description="Dùng cho hội đồng phản biện đề tài nghiên cứu khoa học cấp khoa",
+                criteria_json=[
+                    {"id": "k1", "label": "Ý tưởng và mục tiêu", "max_score": 30},
+                    {"id": "k2", "label": "Nội dung nghiên cứu", "max_score": 40},
+                    {"id": "k3", "label": "Kết quả dự kiến", "max_score": 30},
+                ]
+            )
+        ]
+        db.add_all(templates)
+        db.flush()
+        print(f"  ✅ {len(templates)} evaluation criteria templates")
 
         # ── 5. Approval Steps ────────────────────────────────
         steps = [

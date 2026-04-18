@@ -476,18 +476,21 @@ class ReviewSubmit(BaseModel):
     score: Decimal = Field(..., ge=0, le=100)
     verdict: str = Field(..., pattern="^(PASS|FAIL|NEEDS_REVISION)$")
     comments: str = Field(..., min_length=50)
+    criteria_scores: Optional[List[Any]] = None
 
 
 class ReviewResponse(BaseModel):
     id: UUID
     council_id: UUID
     proposal_id: UUID
+    proposal_title: Optional[str] = None
     reviewer_id: UUID
     reviewer_name: Optional[str] = None
     score: Optional[Decimal]
     comments: Optional[str]
     verdict: Optional[str]
     status: str
+    criteria_scores: Optional[List[Any]] = None
     reviewed_at: Optional[datetime]
     created_at: datetime
 

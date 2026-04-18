@@ -47,6 +47,16 @@ def _log_proposal(db, proposal, from_s, to_s, action, actor_id):
                                   to_status=to_s, action=action, actor_id=actor_id))
 
 
+@router.get("/", response_model=list[CouncilResponse])
+async def list_councils(current_user: User = Depends(require_roles("STAFF", "ADMIN")), db: Session = Depends(get_db)):
+    """List all councils."""
+    councils = db.query(Council).options(
+        joinedload(Council.proposal),
+        joinedload(Council.members).joinedload(CouncilMember.user),
+    ).order_by(Council.created_at.desc()).all()
+    return [_resp(c) for c in councils]
+
+
 @router.post("/", response_model=CouncilResponse, status_code=201)
 async def create_council(body: CouncilCreate, current_user: User = Depends(require_roles("STAFF")), db: Session = Depends(get_db)):
     proposal = db.query(Proposal).filter(Proposal.id == body.proposal_id).first()
@@ -69,6 +79,16 @@ async def my_reviews(current_user: User = Depends(require_roles("REVIEWER")), db
         joinedload(Council.proposal),
         joinedload(Council.members).joinedload(CouncilMember.user),
     ).filter(Council.id.in_(member_ids)).all()
+    return [_resp(c) for c in councils]
+
+
+@router.get("/proposal/{proposal_id}", response_model=list[CouncilResponse])
+async def get_proposal_councils(proposal_id: UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all councils associated with a proposal."""
+    councils = db.query(Council).options(
+        joinedload(Council.proposal),
+        joinedload(Council.members).joinedload(CouncilMember.user),
+    ).filter(Council.proposal_id == proposal_id).all()
     return [_resp(c) for c in councils]
 
 

@@ -64,6 +64,7 @@ async def submit_review(
     review.score = body.score
     review.comments = body.comments
     review.verdict = body.verdict
+    review.criteria_scores = body.criteria_scores
     review.status = "SUBMITTED"
     review.reviewed_at = datetime.now(timezone.utc)
 
@@ -80,12 +81,14 @@ async def submit_review(
                 proposal.status = "REVIEWED"
 
     db.commit()
-    review = db.query(Review).options(joinedload(Review.reviewer)).filter(Review.id == review.id).first()
+    review = db.query(Review).options(joinedload(Review.reviewer), joinedload(Review.proposal)).filter(Review.id == review.id).first()
     return ReviewResponse(
         id=review.id, council_id=review.council_id, proposal_id=review.proposal_id,
+        proposal_title=review.proposal.title if review.proposal else None,
         reviewer_id=review.reviewer_id,
         reviewer_name=review.reviewer.full_name if review.reviewer else None,
         score=review.score, comments=review.comments, verdict=review.verdict,
+        criteria_scores=review.criteria_scores,
         status=review.status, reviewed_at=review.reviewed_at, created_at=review.created_at,
     )
 
@@ -98,16 +101,18 @@ async def my_reviews(
     """Get all reviews assigned to the current reviewer."""
     reviews = (
         db.query(Review)
-        .options(joinedload(Review.reviewer))
+        .options(joinedload(Review.reviewer), joinedload(Review.proposal))
         .filter(Review.reviewer_id == current_user.id)
         .all()
     )
     return [
         ReviewResponse(
             id=r.id, council_id=r.council_id, proposal_id=r.proposal_id,
+            proposal_title=r.proposal.title if r.proposal else None,
             reviewer_id=r.reviewer_id,
             reviewer_name=r.reviewer.full_name if r.reviewer else None,
             score=r.score, comments=r.comments, verdict=r.verdict,
+            criteria_scores=r.criteria_scores,
             status=r.status, reviewed_at=r.reviewed_at, created_at=r.created_at,
         )
         for r in reviews
@@ -123,16 +128,18 @@ async def list_reviews_for_proposal(
     """List all reviews for a proposal (STAFF/LEADERSHIP)."""
     reviews = (
         db.query(Review)
-        .options(joinedload(Review.reviewer))
+        .options(joinedload(Review.reviewer), joinedload(Review.proposal))
         .filter(Review.proposal_id == proposal_id)
         .all()
     )
     return [
         ReviewResponse(
             id=r.id, council_id=r.council_id, proposal_id=r.proposal_id,
+            proposal_title=r.proposal.title if r.proposal else None,
             reviewer_id=r.reviewer_id,
             reviewer_name=r.reviewer.full_name if r.reviewer else None,
             score=r.score, comments=r.comments, verdict=r.verdict,
+            criteria_scores=r.criteria_scores,
             status=r.status, reviewed_at=r.reviewed_at, created_at=r.created_at,
         )
         for r in reviews

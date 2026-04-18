@@ -83,5 +83,5 @@ tr:hover { background: #f9fafb; }
 
 /* Misc */
 .empty { color: #9ca3af; text-align: center; padding: 24px; }
-#page { display: none; }
-#page.active { display: block; }
+.page { display: none; }
+.page.active { display: block; }

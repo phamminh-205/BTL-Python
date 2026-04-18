@@ -26,15 +26,26 @@ function renderPagination(totalItems, currentPage, onPageChange) {
   return html;
 }
 
+function badge(status) {
+  const cls = (status || '').toLowerCase().replace(/ /g, '_');
+  return `<span class="badge badge-${cls}">${status}</span>`;
+}
+
+function fmtDate(d) { return d ? new Date(d).toLocaleString('vi-VN') : '—'; }
+function fmtDateShort(d) { return d ? new Date(d).toLocaleDateString('vi-VN') : '—'; }
+
 function navigate(pageId) {
   // Route Guard: only allow traversing to pages present in the nav (except dashboard)
-  const link = document.querySelector(`nav a[data-page="${pageId}"]`);
-  if (!link && pageId !== 'dashboard') {
+  const user = API.getUser();
+  const navLinks = [...document.querySelectorAll('#nav a')].map(a => a.dataset.page);
+  
+  if (!navLinks.includes(pageId) && pageId !== 'dashboard') {
+    console.warn(`Access denied to ${pageId} for role ${user?.role}`);
     return navigate('dashboard');
   }
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+  document.querySelectorAll('#nav a').forEach(a => a.classList.remove('active'));
   
   const el = document.getElementById(`page-${pageId}`);
   if (el) {
@@ -42,9 +53,28 @@ function navigate(pageId) {
     el.removeAttribute('style');
   }
   
+  const link = document.querySelector(`#nav a[data-page="${pageId}"]`);
   if (link) link.classList.add('active');
   if (pages[pageId]) pages[pageId]();
 }
+
+// Simple notification logic
+function showNotification(count) {
+  const badge = document.getElementById('notif-count');
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('notif-bell')?.addEventListener('click', () => {
+    alert('Tính năng thông báo đang được phát triển. Bạn sẽ nhận được cảnh báo tại đây khi có thay đổi trạng thái đề tài.');
+    showNotification(0);
+  });
+});
 
 // ── Init ─────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -187,25 +217,58 @@ async function viewProposal(id) {
 
     let reviewHtml = '';
     if (reviews && reviews.length) {
-      reviewHtml = `<h4 style="margin:12px 0 6px">Đánh giá phản biện</h4><table>
-        <tr><th>Phản biện</th><th>Điểm</th><th>Kết luận</th><th>Trạng thái</th></tr>
-        ${reviews.map(r => `<tr><td>${r.reviewer_name||r.reviewer_id}</td><td>${r.score||'—'}</td><td>${r.verdict||'—'}</td><td>${badge(r.status)}</td></tr>`).join('')}
-      </table>`;
+      reviewHtml = `<h4 style="margin:20px 0 10px">📊 Đánh giá từ hội đồng phản biện</h4>
+        ${reviews.map(r => `
+          <div class="card" style="margin-bottom:12px; border-left:4px solid #3b82f6">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <span style="font-weight:600">${r.reviewer_name || 'Phản biện'}</span>
+              <span class="badge ${r.verdict === 'PASS' ? 'badge-success' : (r.verdict === 'FAIL' ? 'badge-danger' : 'badge-warning')}">${r.verdict}</span>
+            </div>
+            <p style="font-size:18px; font-weight:700; color:#2563eb; margin:8px 0">${r.score} điểm</p>
+            ${r.criteria_scores ? `
+              <div style="font-size:12px; background:#f8fafc; padding:8px; border-radius:4px; margin-bottom:8px">
+                ${r.criteria_scores.map(cs => `<div style="display:flex; justify-content:space-between"><span>Tiêu chí ${cs.id}:</span> <span>${cs.score}</span></div>`).join('')}
+              </div>` : ''}
+            <p style="font-style:italic; color:#475569; font-size:13px">"${r.comments}"</p>
+          </div>
+        `).join('')}`;
     }
 
+    const timelineHtml = history.map((h, i) => `
+      <div class="timeline-item" style="display:flex; gap:12px; margin-bottom:12px; position:relative">
+        <div style="width:12px; height:12px; border-radius:50%; background:#3b82f6; margin-top:4px; z-index:1"></div>
+        ${i < history.length - 1 ? '<div style="position:absolute; left:5px; top:16px; bottom:-12px; width:2px; background:#e5e7eb"></div>' : ''}
+        <div style="flex:1">
+          <div style="display:flex; justify-content:space-between; font-size:13px">
+            <span style="font-weight:600; color:#1e293b">${h.to_status}</span>
+            <span style="color:#64748b">${fmtDate(h.changed_at)}</span>
+          </div>
+          <div style="color:#475569; font-size:12px">${h.action} ${h.note ? `— <span style="color:#ef4444">${h.note}</span>` : ''}</div>
+        </div>
+      </div>
+    `).join('');
+
     document.getElementById('modal-view-body').innerHTML = `
-      <p><b>Trạng thái:</b> ${badge(p.status)}</p>
-      <p><b>PI:</b> ${p.pi_name}</p>
-      <p><b>Lĩnh vực:</b> ${p.field_name||'—'} | <b>Loại:</b> ${p.category_name||'—'}</p>
-      <p><b>Thời gian:</b> ${p.duration_months||'—'} tháng</p>
-      <p><b>Tóm tắt:</b> ${p.summary||'—'}</p>
-      ${p.attachment_url ? `<p><b>Tài liệu đính kèm:</b> <a href="${p.attachment_url}" target="_blank">Tải xuống / Xem</a></p>` : ''}
-      ${p.revision_reason ? `<p><b style="color:red">Lý do trả về:</b> ${p.revision_reason}</p>` : ''}
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px">
+        <div>
+          <p><b>Trạng thái:</b> ${badge(p.status)}</p>
+          <p><b>PI:</b> ${p.pi_name}</p>
+          <p><b>Lĩnh vực:</b> ${p.field_name||'—'}</p>
+          <p><b>Loại:</b> ${p.category_name||'—'}</p>
+          <p><b>Thời gian:</b> ${p.duration_months||'—'} tháng</p>
+          <p><b>Tài liệu:</b> ${p.attachment_url ? `<a href="${p.attachment_url}" target="_blank">🔗 Xem hồ sơ</a>` : '—'}</p>
+          <div style="margin-top:12px; padding:10px; background:#f1f5f9; border-radius:6px">
+            <p style="font-weight:600; font-size:13px; margin-bottom:4px">Tóm tắt:</p>
+            <p style="font-size:13px; color:#334155">${p.summary || 'Chưa có tóm tắt.'}</p>
+          </div>
+        </div>
+        <div>
+          <h4 style="margin-bottom:12px">🕒 Lịch sử phê duyệt</h4>
+          <div style="padding-left:4px">${timelineHtml}</div>
+        </div>
+      </div>
       ${reviewHtml}
-      <h4 style="margin:12px 0 6px">Lịch sử trạng thái</h4>
-      <table><tr><th>Hành động</th><th>Từ</th><th>→</th><th>Thời gian</th></tr>
-      ${history.map(h => `<tr><td>${h.action}</td><td>${h.from_status||'—'}</td><td>${h.to_status}</td><td>${fmtDate(h.changed_at)}</td></tr>`).join('')}
-      </table>`;
+    `;
     document.getElementById('modal-view-title').textContent = p.title;
     openModal('modal-view');
   } catch(e) { alert(e.message); }
@@ -627,61 +690,91 @@ registerPage('councils', async () => {
 });
 
 async function loadCouncils() {
-  // Load all proposals that have councils (get via UNDER_REVIEW and ACCEPTANCE_SUBMITTED)
-  const statuses = ['VALIDATED', 'UNDER_REVIEW', 'REVIEWED', 'ACCEPTANCE_SUBMITTED', 'UNDER_ACCEPTANCE_REVIEW'];
-  let allProps = [];
-  for (const s of statuses) {
-    const d = await API.get(`/proposals?status=${s}&size=50`).catch(() => ({ items: [] }));
-    allProps = [...allProps, ...d.items];
-  }
+  try {
+    const councils = await API.get('/councils');
+    const el = document.getElementById('councils-list');
+    if (!councils.length) { el.innerHTML = '<p class="empty">Chưa có hội đồng nào.</p>'; return; }
 
-  const el = document.getElementById('councils-list');
-  if (!allProps.length) { el.innerHTML = '<p class="empty">Không có hội đồng nào.</p>'; return; }
+    let rows = councils.map(c => `
+      <tr>
+        <td>${c.name}</td>
+        <td>${c.proposal_title}</td>
+        <td>${badge(c.status)}</td>
+        <td>
+          ${c.status === 'FORMING' ? `<button class="btn btn-sm btn-primary" onclick="manageCouncil('${c.id}')">Thiết lập</button>` : ''}
+          <button class="btn btn-sm btn-secondary" onclick="viewCouncil('${c.id}')">Chi tiết</button>
+        </td>
+      </tr>`).join('');
 
-  // Get council for each proposal
-  let rows = '';
-  for (const p of allProps) {
-    // We'll just show the proposals and manage via status
-    rows += `<tr>
-      <td>${p.title}</td><td>${badge(p.status)}</td>
-      <td><button class="btn btn-sm btn-secondary" onclick="manageCouncil('${p.id}')">Quản lý HĐ</button></td>
-    </tr>`;
-  }
-
-  el.innerHTML = `<div class="card" style="margin-top:16px"><h3>Đề tài có hội đồng</h3>
-    <table><thead><tr><th>Đề tài</th><th>Trạng thái</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table></div>`;
+    el.innerHTML = `<div class="card" style="margin-top:16px">
+      <table><thead><tr><th>Tên hội đồng</th><th>Đề tài</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  } catch(e) { document.getElementById('councils-list').innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
 }
 
-async function manageCouncil(proposalId) {
-  // Fetch proposal councils - we need to find them by proposal
-  // Since we don't have a GET /councils?proposal_id endpoint, we'll show a simple modal
-  const p = await API.get(`/proposals/${proposalId}`);
-  const reviewers = await API.get('/users?role=REVIEWER&size=100');
+async function viewCouncil(id) {
+  try {
+    const c = await API.get(`/councils/${id}`);
+    document.getElementById('modal-view-title').textContent = c.name;
+    document.getElementById('modal-view-body').innerHTML = `
+      <p><b>Đề tài:</b> ${c.proposal_title}</p>
+      <p><b>Loại:</b> ${c.council_type}</p>
+      <p><b>Trạng thái:</b> ${badge(c.status)}</p>
+      <p><b>Địa điểm:</b> ${c.location || '—'}</p>
+      <p><b>Ngày họp:</b> ${c.scheduled_date || '—'}</p>
+      <h4>Thành viên</h4>
+      <ul>${c.members.map(m => `<li>${m.full_name} (${m.role_in_council})</li>`).join('')}</ul>
+    `;
+    openModal('modal-view');
+  } catch(e) { alert(e.message); }
+}
 
-  const modal = document.getElementById('modal-council-manage');
-  document.getElementById('modal-council-title').textContent = `HĐ: ${p.title}`;
-  document.getElementById('council-proposal-id').value = proposalId;
+async function manageCouncil(councilId) {
+  try {
+    const c = await API.get(`/councils/${councilId}`);
+    const reviewers = await API.get('/users?role=REVIEWER&size=100');
+    
+    document.getElementById('modal-council-title').textContent = `Thiết lập: ${c.name}`;
+    document.getElementById('council-proposal-id').value = councilId; // Using this as councilId now
 
-  document.getElementById('council-reviewer-list').innerHTML = reviewers.items.map(r =>
-    `<label style="display:block;padding:4px"><input type="checkbox" value="${r.id}"> ${r.full_name} (${r.email})</label>`
-  ).join('');
+    const currentMemberIds = c.members.map(m => m.user_id);
+    document.getElementById('council-reviewer-list').innerHTML = reviewers.items.map(r => `
+      <label style="display:block;padding:4px;border-bottom:1px solid #f3f4f6">
+        <input type="checkbox" value="${r.id}" ${currentMemberIds.includes(r.id) ? 'checked' : ''}> 
+        ${r.full_name} (${r.academic_rank || ''} ${r.academic_title || ''})
+      </label>
+    `).join('');
 
-  openModal('modal-council-manage');
+    openModal('modal-council-manage');
+  } catch(e) { alert(e.message); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-create-council-members')?.addEventListener('click', async () => {
-    const proposalId = document.getElementById('council-proposal-id').value;
-    // Get council from proposal (find FORMING councils)
-    try {
-      // First activate with members from checkboxes
-      const checked = [...document.querySelectorAll('#council-reviewer-list input:checked')].map(c => c.value);
-      if (checked.length < 2) return alert('Cần ít nhất 2 phản biện');
+    const councilId = document.getElementById('council-proposal-id').value;
+    const checked = [...document.querySelectorAll('#council-reviewer-list input:checked')].map(c => c.value);
+    
+    if (checked.length < 2) return alert('Hội đồng phải có ít nhất 2 phản biện');
 
-      // We need council_id - find it via a proposal query
-      // For simplicity, let's create and immediately manage
-      alert(`Chọn ${checked.length} phản biện. Vui lòng nhập ID hội đồng để thêm thành viên qua Swagger tại /docs (tính năng này cần thêm endpoint GET /councils?proposal_id).`);
+    try {
+      // 1. Clear existing members (or just add new ones, but for MVP let's assume we set the full list)
+      // The API doesn't have a "sync members" endpoint, so we'll just add those that are not there.
+      const c = await API.get(`/councils/${councilId}`);
+      const existingIds = c.members.map(m => m.user_id);
+      
+      for (const uid of checked) {
+        if (!existingIds.includes(uid)) {
+          await API.post(`/councils/${councilId}/members`, { user_id: uid, role_in_council: 'REVIEWER' });
+        }
+      }
+      
+      // 2. Activate council
+      if (confirm('Xác nhận kích hoạt hội đồng và bắt đầu quá trình phản biện?')) {
+        await API.post(`/councils/${councilId}/activate`);
+        showMsg(document.getElementById('msg-councils'), 'Hội đồng đã được kích hoạt!', 'success');
+        closeModal('modal-council-manage');
+        await loadCouncils();
+      }
     } catch(e) { alert(e.message); }
   });
 });
@@ -860,21 +953,60 @@ registerPage('my-reviews', async () => {
     const el2 = document.getElementById('my-reviews-list');
     if (!reviews.length) { el2.innerHTML = '<p class="empty">Chưa có phân công.</p>'; return; }
     el2.innerHTML = `<table>
-      <thead><tr><th>Đề tài</th><th>Hội đồng</th><th>Trạng thái</th><th>Điểm</th><th>Thao tác</th></tr></thead>
+      <thead><tr><th>Đề tài</th><th>Trạng thái</th><th>Điểm</th><th>Thao tác</th></tr></thead>
       <tbody>${reviews.map(r => `<tr>
-        <td>${r.proposal_id}</td><td>${r.council_id}</td><td>${badge(r.status)}</td><td>${r.score||'—'}</td>
+        <td title="${r.proposal_id}">${r.proposal_title || '—'}</td><td>${badge(r.status)}</td><td>${r.score||'—'}</td>
         <td>${r.status === 'PENDING' ? `<button class="btn btn-sm btn-primary" onclick="openSubmitReview('${r.council_id}','${r.proposal_id}')">Nộp đánh giá</button>` : '—'}</td>
       </tr>`).join('')}</tbody></table>`;
   } catch(e) { document.getElementById('my-reviews-list').innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
 });
 
 let _reviewCtx = {};
-function openSubmitReview(councilId, proposalId) {
+let _currentCriteria = [];
+
+async function openSubmitReview(councilId, proposalId) {
   _reviewCtx = { councilId, proposalId };
-  document.getElementById('review-score').value = '';
+  document.getElementById('review-score').value = '0';
   document.getElementById('review-comments').value = '';
   document.getElementById('review-verdict').value = 'PASS';
+  
+  const criteriaInputs = document.getElementById('criteria-inputs');
+  const container = document.getElementById('criteria-form-container');
+  criteriaInputs.innerHTML = 'Đang tải tiêu chí...';
+  container.style.display = 'block';
+
+  try {
+    // For MVP, we'll fetch the first active template
+    const templates = await API.get('/catalog/evaluation-criteria?is_active=true');
+    if (templates.items && templates.items.length > 0) {
+      _currentCriteria = templates.items[0].criteria_json;
+      criteriaInputs.innerHTML = _currentCriteria.map(c => `
+        <div class="form-group" style="margin-bottom:8px">
+          <label style="font-size:12px">${c.label} (Tối đa ${c.max_score})</label>
+          <input type="number" class="criteria-input" data-id="${c.id}" data-max="${c.max_score}" 
+                 min="0" max="${c.max_score}" value="0" step="0.5" 
+                 oninput="calcTotalReviewScore()" style="padding:4px; font-size:13px">
+        </div>
+      `).join('');
+    } else {
+      container.style.display = 'none';
+      document.getElementById('review-score').readOnly = false;
+      document.getElementById('review-score').style.background = '#fff';
+    }
+  } catch(e) {
+    console.error('Failed to load criteria', e);
+    criteriaInputs.innerHTML = '<p style="color:red;font-size:12px">Không thể tải tiêu chí.</p>';
+  }
+
   openModal('modal-submit-review');
+}
+
+function calcTotalReviewScore() {
+  let total = 0;
+  document.querySelectorAll('.criteria-input').forEach(input => {
+    total += parseFloat(input.value || 0);
+  });
+  document.getElementById('review-score').value = total;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -885,10 +1017,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isNaN(score)) return alert('Nhập điểm hợp lệ');
     if (comments.length < 50) return alert('Nhận xét tối thiểu 50 ký tự');
     try {
+      const criteriaScores = [...document.querySelectorAll('.criteria-input')].map(input => ({
+        id: input.dataset.id,
+        score: parseFloat(input.value || 0)
+      }));
+
       await API.post('/reviews', {
         council_id: _reviewCtx.councilId,
         proposal_id: _reviewCtx.proposalId,
         score, comments, verdict,
+        criteria_scores: criteriaScores,
       });
       closeModal('modal-submit-review');
       showMsg(document.getElementById('msg-my-reviews'), 'Nộp đánh giá thành công!', 'success');
