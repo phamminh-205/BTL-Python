@@ -280,27 +280,27 @@ async function viewProposal(id) {
 // ══════════════════════════════════════════════════════════════════
 registerPage('create-proposal', async () => {
   const el = document.getElementById('page-create-proposal');
-  const [fields, categories, periods] = await Promise.all([
-    API.get('/catalog/research-fields'),
-    API.get('/catalog/proposal-categories'),
-    API.get('/periods?status=OPEN'),
-  ]);
-  const [users] = await Promise.all([API.get('/users?role=FACULTY&size=100')]);
+  try {
+    const [fields, categories, periods] = await Promise.all([
+      API.get('/catalog/research-fields'),
+      API.get('/catalog/proposal-categories'),
+      API.get('/periods?status=OPEN'),
+    ]);
 
-  el.innerHTML = `<div class="section-header"><h2>Tạo đề tài mới</h2></div>
-    <div id="msg-create"></div>
-    <div class="card">
-      <form id="create-form">
-        <div class="form-group"><label>Tên đề tài *</label><input name="title" required></div>
-        <div class="form-row">
-          <div class="form-group"><label>Đợt đăng ký *</label><select name="period_id">
-            ${periods.map(p => `<option value="${p.id}">${p.title}</option>`).join('')}
-          </select></div>
-          <div class="form-group"><label>Lĩnh vực *</label><select name="field_id">
-            <option value="">— Chọn —</option>
-            ${(fields.items||[]).map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
-          </select></div>
-        </div>
+    el.innerHTML = `<div class="section-header"><h2>Tạo đề tài mới</h2></div>
+      <div id="msg-create"></div>
+      <div class="card">
+        <form id="create-form">
+          <div class="form-group"><label>Tên đề tài *</label><input name="title" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>Đợt đăng ký *</label><select name="period_id">
+              ${(periods.items || []).map(p => `<option value="${p.id}">${p.title}</option>`).join('')}
+            </select></div>
+            <div class="form-group"><label>Lĩnh vực *</label><select name="field_id">
+              <option value="">— Chọn —</option>
+              ${(fields.items || []).map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
+            </select></div>
+          </div>
         <div class="form-row">
           <div class="form-group"><label>Loại đề tài</label><select name="category_id">
             <option value="">— Chọn —</option>
@@ -320,34 +320,37 @@ registerPage('create-proposal', async () => {
       </form>
     </div>`;
 
-  let submitNow = false;
-  el.querySelectorAll('button[type=submit]').forEach(btn => {
-    btn.addEventListener('click', () => { submitNow = btn.value === 'submit'; });
-  });
+    let submitNow = false;
+    el.querySelectorAll('button[type=submit]').forEach(btn => {
+      btn.addEventListener('click', () => { submitNow = btn.value === 'submit'; });
+    });
 
-  document.getElementById('create-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const body = {
-      title: fd.get('title'),
-      period_id: fd.get('period_id') || null,
-      field_id: fd.get('field_id') || null,
-      category_id: fd.get('category_id') || null,
-      duration_months: fd.get('duration_months') ? parseInt(fd.get('duration_months')) : null,
-      attachment_url: fd.get('attachment_url') || null,
-      summary: fd.get('summary') || null,
-      objectives: fd.get('objectives') || null,
-      methodology: fd.get('methodology') || null,
-      expected_outcomes: fd.get('expected_outcomes') || null,
-      submit: submitNow,
-    };
-    try {
-      await API.post('/proposals', body);
-      showMsg(document.getElementById('msg-create'), 'Tạo đề tài thành công!', 'success');
-      e.target.reset();
-      navigate('my-proposals');
-    } catch(err) { showMsg(document.getElementById('msg-create'), err.message); }
-  });
+    document.getElementById('create-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const body = {
+        title: fd.get('title'),
+        period_id: fd.get('period_id') || null,
+        field_id: fd.get('field_id') || null,
+        category_id: fd.get('category_id') || null,
+        duration_months: fd.get('duration_months') ? parseInt(fd.get('duration_months')) : null,
+        attachment_url: fd.get('attachment_url') || null,
+        summary: fd.get('summary') || null,
+        objectives: fd.get('objectives') || null,
+        methodology: fd.get('methodology') || null,
+        expected_outcomes: fd.get('expected_outcomes') || null,
+        submit: submitNow,
+      };
+      try {
+        await API.post('/proposals', body);
+        showMsg(document.getElementById('msg-create'), 'Tạo đề tài thành công!', 'success');
+        e.target.reset();
+        navigate('my-proposals');
+      } catch(err) { showMsg(document.getElementById('msg-create'), err.message); }
+    });
+  } catch(e) {
+    el.innerHTML = `<p class="alert alert-error">Lỗi khi tải trang: ${e.message}</p>`;
+  }
 });
 
 // Edit Proposal Modal Logic
