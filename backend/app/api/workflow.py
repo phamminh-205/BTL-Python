@@ -5,6 +5,7 @@ from typing import List, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -94,36 +95,42 @@ async def submit_review(
     )
 
 
-@router.get("/reviews/reviewer-list", response_model=List[ReviewResponse])
+@router.get("/reviews/reviewer-list")
 async def my_reviews(
     current_user: User = Depends(require_roles("REVIEWER")),
     db: Session = Depends(get_db),
 ):
-    """Get all reviews assigned to the current reviewer."""
-    reviews = (
-        db.query(Review)
-        .options(joinedload(Review.reviewer), joinedload(Review.proposal))
-        .filter(Review.reviewer_id == current_user.id)
-        .all()
-    )
-    return [
-        ReviewResponse(
-            id=r.id,
-            council_id=r.council_id,
-            proposal_id=r.proposal_id,
-            proposal_title=getattr(r.proposal, 'title', 'N/A') if r.proposal else "N/A",
-            reviewer_id=r.reviewer_id,
-            reviewer_name=getattr(r.reviewer, 'full_name', 'N/A') if r.reviewer else "N/A",
-            score=r.score,
-            comments=r.comments,
-            verdict=r.verdict,
-            criteria_scores=r.criteria_scores,
-            status=r.status,
-            reviewed_at=r.reviewed_at,
-            created_at=r.created_at,
+    try:
+        reviews = (
+            db.query(Review)
+            .options(joinedload(Review.reviewer), joinedload(Review.proposal))
+            .filter(Review.reviewer_id == current_user.id)
+            .all()
         )
-        for r in reviews if r
-    ]
+        res = []
+        for r in reviews:
+            res.append({
+                "id": str(r.id),
+                "council_id": str(r.council_id),
+                "proposal_id": str(r.proposal_id),
+                "proposal_title": getattr(r.proposal, 'title', 'N/A') if r.proposal else "N/A",
+                "reviewer_id": str(r.reviewer_id),
+                "reviewer_name": getattr(r.reviewer, 'full_name', 'N/A') if r.reviewer else "N/A",
+                "score": float(r.score) if r.score else None,
+                "comments": r.comments,
+                "verdict": r.verdict,
+                "criteria_scores": r.criteria_scores,
+                "status": r.status,
+                "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+        return res
+    except Exception as e:
+        import traceback
+        return JSONResponse(
+            status_code=400,
+            content={"error": str(e), "traceback": traceback.format_exc()}
+        )
 
 
 @router.get("/reviews/proposal/{proposal_id}", response_model=List[ReviewResponse])
