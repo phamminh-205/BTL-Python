@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, users, catalog, periods, proposals, councils, workflow
+from app.api import auth, users, catalog, periods, proposals, councils, workflow, progress
 
 
 from app.core.db_utils import ensure_schema_consistency
@@ -61,6 +61,7 @@ app.include_router(periods.router,   prefix="/api")
 app.include_router(proposals.router, prefix="/api")
 app.include_router(councils.router,  prefix="/api")
 app.include_router(workflow.router,  prefix="/api")
+app.include_router(progress.router,  prefix="/api")
 
 
 @app.get("/api/health", tags=["System"])

@@ -47,7 +47,7 @@ class User(Base):
     proposal_memberships = relationship("ProposalMember", back_populates="user")
     council_memberships = relationship("CouncilMember", back_populates="user")
     reviews = relationship("Review", back_populates="reviewer")
-    progress_reports = relationship("ProgressReport", back_populates="submitted_by_user")
+    progress_reports = relationship("ProgressReport", back_populates="submitted_by_user", foreign_keys="ProgressReport.submitted_by")
     approval_decisions = relationship("ApprovalHistory", back_populates="decided_by_user")
     acceptance_reviews = relationship("AcceptanceReview", back_populates="reviewer")
     publications = relationship("Publication", back_populates="author")

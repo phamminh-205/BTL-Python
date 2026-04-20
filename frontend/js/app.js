@@ -109,6 +109,7 @@ function buildNav(role) {
     add('periods', '📅 Đợt đăng ký');
     add('councils', '🏛️ Hội đồng');
     add('acceptance-staff', '📋 Nghiệm thu');
+    add('progress-staff', '📊 Theo dõi tiến độ');
   }
   if (role === 'LEADERSHIP') {
     add('approve', '✅ Phê duyệt');
@@ -135,28 +136,71 @@ function buildNav(role) {
 registerPage('dashboard', async () => {
   const el = document.getElementById('page-dashboard');
   const user = API.getUser();
-  
-  let facultyStatsHtml = '';
+  let extraHtml = '';
+
   if (user.role === 'FACULTY') {
     try {
-      const stats = await API.get('/proposals/stats/faculty');
+      const [stats, prog] = await Promise.all([
+        API.get('/proposals/stats/faculty').catch(() => ({stats:{}})),
+        API.get('/progress/dashboard/faculty').catch(() => ({total_active_projects:0, items:[]})),
+      ]);
       const s = stats.stats || {};
-      facultyStatsHtml = `
-        <h4 style="margin-top:20px">Thống kê đề tài</h4>
+      const overdue = (prog.items || []).filter(i => i.is_overdue);
+      const upcoming = (prog.items || []).filter(i => !i.is_overdue && i.next_deadline);
+      extraHtml = `
+        <h4 style="margin-top:20px">📊 Thống kê đề tài</h4>
         <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-          <div class="card" style="flex:1;min-width:120px;text-align:center"><h3>${s['DRAFT']||0}</h3><p>Bản nháp</p></div>
-          <div class="card" style="flex:1;min-width:120px;text-align:center"><h3>${s['SUBMITTED']||0}</h3><p>Đã nộp</p></div>
-          <div class="card" style="flex:1;min-width:120px;text-align:center"><h3>${(s['REVISION_REQUESTED']||0)}</h3><p>Cần sửa</p></div>
-          <div class="card" style="flex:1;min-width:120px;text-align:center"><h3>${s['VALIDATED']||0}</h3><p>Hợp lệ</p></div>
-          <div class="card" style="flex:1;min-width:120px;text-align:center"><h3>${s['APPROVED']||0}</h3><p>Đã duyệt</p></div>
-        </div>`;
-    } catch(e) { console.error('Failed to load stats', e); }
+          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['DRAFT']||0}</h3><p>Bản nháp</p></div>
+          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['SUBMITTED']||0}</h3><p>Đã nộp</p></div>
+          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['REVISION_REQUESTED']||0}</h3><p>Cần sửa</p></div>
+          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['APPROVED']||0}</h3><p>Đã duyệt</p></div>
+          <div class="card" style="flex:1;min-width:110px;text-align:center;background:${s['IN_PROGRESS']>0?'#f0fdf4':''}">
+            <h3>${s['IN_PROGRESS']||0}</h3><p>Đang thực hiện</p></div>
+        </div>
+        ${overdue.length ? `
+          <div class="card" style="margin-top:16px;border-left:4px solid #ef4444;background:#fef2f2">
+            <h4 style="color:#ef4444">⚠️ Cảnh báo: ${overdue.length} đề tài chậm tiến độ</h4>
+            ${overdue.map(i => `<p style="font-size:13px">• <b>${i.proposal_title}</b> — ${i.latest_completion_pct}% hoàn thành</p>`).join('')}
+          </div>` : ''}
+        ${upcoming.length ? `
+          <div class="card" style="margin-top:12px;border-left:4px solid #3b82f6">
+            <h4 style="color:#3b82f6">📅 Deadline báo cáo tiến độ sắp tới</h4>
+            ${upcoming.map(i => `<p style="font-size:13px">• <b>${i.proposal_title}</b> — Hạn: ${fmtDate(i.next_deadline)}</p>`).join('')}
+          </div>` : ''}`;
+    } catch(e) { console.error('Dashboard error', e); }
+  }
+
+  if (user.role === 'STAFF' || user.role === 'LEADERSHIP' || user.role === 'ADMIN') {
+    try {
+      const prog = await API.get('/progress/dashboard/staff').catch(() => null);
+      if (prog) {
+        const sb = prog.status_breakdown || {};
+        extraHtml = `
+          <h4 style="margin-top:20px">📊 Tổng quan tiến độ đề tài</h4>
+          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
+            <div class="card" style="flex:1;min-width:130px;text-align:center">
+              <h3 style="color:#3b82f6">${prog.total_in_progress}</h3><p>Đang thực hiện</p></div>
+            <div class="card" style="flex:1;min-width:130px;text-align:center">
+              <h3 style="color:#8b5cf6">${prog.total_approved_not_started}</h3><p>Đã duyệt (chưa bắt đầu)</p></div>
+            <div class="card" style="flex:1;min-width:130px;text-align:center;background:${prog.total_overdue_reports>0?'#fef2f2':''}">
+              <h3 style="color:#ef4444">${prog.total_overdue_reports}</h3><p>Báo cáo quá hạn</p></div>
+            <div class="card" style="flex:1;min-width:130px;text-align:center;background:${prog.pending_review_count>0?'#fffbeb':''}">
+              <h3 style="color:#f59e0b">${prog.pending_review_count}</h3><p>Chờ review</p></div>
+          </div>
+          <h4 style="margin-top:16px">Phân loại trạng thái báo cáo</h4>
+          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+            <div class="card" style="flex:1;min-width:100px;text-align:center"><h3>${sb.SUBMITTED||0}</h3><p>Đã nộp</p></div>
+            <div class="card" style="flex:1;min-width:100px;text-align:center;background:#f0fdf4"><h3 style="color:#16a34a">${sb.ACCEPTED||0}</h3><p>Chấp nhận</p></div>
+            <div class="card" style="flex:1;min-width:100px;text-align:center;background:#fffbeb"><h3 style="color:#d97706">${sb.NEEDS_REVISION||0}</h3><p>Cần bổ sung</p></div>
+            <div class="card" style="flex:1;min-width:100px;text-align:center;background:#fef2f2"><h3 style="color:#dc2626">${sb.DELAYED||0}</h3><p>Chậm tiến độ</p></div>
+          </div>`;
+      }
+    } catch(e) { console.error('Staff dashboard error', e); }
   }
 
   el.innerHTML = `<div class="card"><h3>Chào mừng, ${user.full_name}!</h3>
     <p>Vai trò: <strong>${user.role}</strong> | Email: ${user.email}</p>
-    <p>Sử dụng menu bên trái để điều hướng.</p></div>
-    ${facultyStatsHtml}`;
+    <p>Sử dụng menu bên trái để điều hướng.</p></div>${extraHtml}`;
 });
 
 
@@ -416,66 +460,219 @@ document.addEventListener('DOMContentLoaded', () => {
 // ══════════════════════════════════════════════════════════════════
 registerPage('progress', async () => {
   const el = document.getElementById('page-progress');
-  const data = await API.get('/proposals?status=IN_PROGRESS');
-  el.innerHTML = `<div class="section-header"><h2>Báo cáo tiến độ</h2></div>
+  // Load both APPROVED and IN_PROGRESS proposals
+  const [inProg, approved] = await Promise.all([
+    API.get('/proposals?status=IN_PROGRESS&size=50').catch(() => ({ items: [] })),
+    API.get('/proposals?status=APPROVED&size=50').catch(() => ({ items: [] })),
+  ]);
+  const allProposals = [...inProg.items, ...approved.items];
+
+  el.innerHTML = `<div class="section-header"><h2>📊 Báo cáo tiến độ</h2></div>
     <div id="msg-progress"></div>
     <div class="card">
-      <div class="form-group"><label>Chọn đề tài đang thực hiện:</label>
+      <div class="form-group">
+        <label for="sel-progress-proposal">Chọn đề tài (đã phê duyệt / đang thực hiện):</label>
         <select id="sel-progress-proposal" onchange="loadProgressReports()">
           <option value="">— Chọn đề tài —</option>
-          ${data.items.map(p => `<option value="${p.id}">${p.title}</option>`).join('')}
+          ${allProposals.map(p => `<option value="${p.id}">[${p.status}] ${p.title}</option>`).join('')}
         </select>
       </div>
-      <div id="progress-list"></div>
-      <div id="progress-form" style="display:none;margin-top:12px">
-        <h4>Nộp báo cáo mới</h4>
-        <form id="form-progress">
-          <div class="form-row">
-            <div class="form-group"><label>Kỳ báo cáo</label><input name="report_period" placeholder="VD: Tháng 3-4/2026"></div>
-            <div class="form-group"><label>Tiến độ (%) *</label><input name="completion_pct" type="number" min="0" max="100" required></div>
-          </div>
-          <div class="form-group"><label>Nội dung *</label><textarea name="content" rows="4" required></textarea></div>
-          <div class="form-group"><label>Khó khăn</label><textarea name="issues" rows="2"></textarea></div>
-          <div class="form-group"><label>Kế hoạch tiếp theo *</label><textarea name="next_steps" rows="2" required></textarea></div>
-          <button type="submit" class="btn btn-primary">Nộp báo cáo</button>
-        </form>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button id="tab-reports" class="btn btn-primary btn-sm" onclick="switchProgressTab('reports')">📋 Danh sách báo cáo</button>
+        <button id="tab-submit" class="btn btn-secondary btn-sm" onclick="switchProgressTab('submit')">➕ Nộp báo cáo mới</button>
+        <button id="tab-timeline" class="btn btn-secondary btn-sm" onclick="switchProgressTab('timeline')">🕒 Timeline dự án</button>
       </div>
+    </div>
+    <div id="tab-content-reports" class="card" style="display:none">
+      <div id="progress-list"><p class="empty">Chọn đề tài để xem báo cáo.</p></div>
+    </div>
+    <div id="tab-content-submit" class="card" style="display:none">
+      <h4>Nộp báo cáo tiến độ mới</h4>
+      <form id="form-progress">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="prog-period">Kỳ báo cáo</label>
+            <input id="prog-period" name="report_period" placeholder="VD: Tháng 3-4/2026">
+          </div>
+          <div class="form-group">
+            <label for="prog-pct">Phần trăm hoàn thành (%) *</label>
+            <input id="prog-pct" name="completion_pct" type="number" min="0" max="100" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="prog-content">Công việc đã hoàn thành *</label>
+          <textarea id="prog-content" name="content" rows="4" placeholder="Mô tả chi tiết công việc đã thực hiện trong kỳ này..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="prog-products">Sản phẩm đã tạo ra</label>
+          <textarea id="prog-products" name="products_created" rows="2" placeholder="VD: Bài báo, phần mềm, báo cáo trung gian..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="prog-issues">Khó khăn / Rủi ro</label>
+          <textarea id="prog-issues" name="issues" rows="2" placeholder="Các vấn đề phát sinh, rủi ro cần chú ý..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="prog-nextsteps">Kế hoạch tiếp theo *</label>
+          <textarea id="prog-nextsteps" name="next_steps" rows="2" placeholder="Công việc dự kiến trong kỳ tới..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="prog-attachment">Minh chứng đính kèm (URL)</label>
+          <input id="prog-attachment" name="attachment_url" placeholder="https://drive.google.com/...">
+        </div>
+        <button type="submit" class="btn btn-primary">📤 Nộp báo cáo</button>
+      </form>
+    </div>
+    <div id="tab-content-timeline" class="card" style="display:none">
+      <div id="progress-timeline"><p class="empty">Chọn đề tài để xem timeline.</p></div>
     </div>`;
 
   document.getElementById('form-progress').addEventListener('submit', async (e) => {
     e.preventDefault();
     const pid = document.getElementById('sel-progress-proposal').value;
-    if (!pid) return;
+    if (!pid) return alert('Vui lòng chọn đề tài');
     const fd = new FormData(e.target);
     try {
       await API.post(`/progress/proposals/${pid}`, {
         report_period: fd.get('report_period') || null,
         content: fd.get('content'),
+        products_created: fd.get('products_created') || null,
         completion_pct: parseFloat(fd.get('completion_pct')),
         issues: fd.get('issues') || null,
         next_steps: fd.get('next_steps'),
+        attachment_url: fd.get('attachment_url') || null,
       });
       showMsg(document.getElementById('msg-progress'), 'Nộp báo cáo thành công!', 'success');
       e.target.reset();
       await loadProgressReports();
-    } catch(e) { showMsg(document.getElementById('msg-progress'), e.message); }
+      switchProgressTab('reports');
+    } catch(err) { showMsg(document.getElementById('msg-progress'), err.message); }
   });
 });
+
+
+
+function switchProgressTab(tab) {
+  ['reports','submit','timeline'].forEach(t => {
+    const content = document.getElementById(`tab-content-${t}`);
+    const btn = document.getElementById(`tab-${t}`);
+    if (content) content.style.display = t === tab ? 'block' : 'none';
+    if (btn) {
+      btn.className = `btn btn-sm ${t === tab ? 'btn-primary' : 'btn-secondary'}`;
+    }
+  });
+  const pid = document.getElementById('sel-progress-proposal')?.value;
+  if (tab === 'reports' && pid) loadProgressReports();
+  if (tab === 'timeline' && pid) loadProgressTimeline(pid);
+}
 
 async function loadProgressReports() {
   const pid = document.getElementById('sel-progress-proposal').value;
   const listEl = document.getElementById('progress-list');
-  const formEl = document.getElementById('progress-form');
-  if (!pid) { listEl.innerHTML = ''; formEl.style.display = 'none'; return; }
-  formEl.style.display = 'block';
+  if (!pid) { listEl.innerHTML = '<p class="empty">Chọn đề tài để xem báo cáo.</p>'; return; }
+  const tabEl = document.getElementById('tab-content-reports');
+  if (tabEl) tabEl.style.display = 'block';
   try {
     const reports = await API.get(`/progress/proposals/${pid}`);
-    if (!reports.length) { listEl.innerHTML = '<p class="empty">Chưa có báo cáo.</p>'; return; }
-    listEl.innerHTML = `<table>
-      <tr><th>#</th><th>Kỳ</th><th>Tiến độ</th><th>Ngày nộp</th></tr>
-      ${reports.map(r => `<tr><td>${r.report_order}</td><td>${r.report_period||'—'}</td><td>${r.completion_pct}%</td><td>${fmtDateShort(r.submitted_at)}</td></tr>`).join('')}
-    </table>`;
+    if (!reports.length) { listEl.innerHTML = '<p class="empty">Chưa có báo cáo nào.</p>'; return; }
+
+    const statusColor = { SUBMITTED:'#6b7280', ACCEPTED:'#16a34a', NEEDS_REVISION:'#d97706', DELAYED:'#dc2626' };
+    const statusLabel = { SUBMITTED:'Đã nộp', ACCEPTED:'Chấp nhận', NEEDS_REVISION:'Cần bổ sung', DELAYED:'Chậm tiến độ' };
+
+    listEl.innerHTML = reports.map(r => `
+      <div class="card" style="margin-bottom:12px;border-left:4px solid ${statusColor[r.status]||'#ccc'}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <span style="font-weight:600">Báo cáo #${r.report_order}</span>
+            ${r.report_period ? `<span style="color:#64748b;margin-left:8px">${r.report_period}</span>` : ''}
+            ${r.is_overdue ? '<span style="background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:11px;margin-left:8px">⚠️ Quá hạn</span>' : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-weight:700;font-size:18px;color:${statusColor[r.status]||'#333'}">${r.completion_pct}%</span>
+            <span class="badge" style="background:${statusColor[r.status]||'#ccc'}20;color:${statusColor[r.status]||'#333'};border:1px solid ${statusColor[r.status]||'#ccc'}">${statusLabel[r.status]||r.status}</span>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:13px;color:#374151">
+          <p><b>Công việc đã hoàn thành:</b> ${r.content}</p>
+          ${r.products_created ? `<p><b>Sản phẩm:</b> ${r.products_created}</p>` : ''}
+          ${r.issues ? `<p><b>Khó khăn:</b> ${r.issues}</p>` : ''}
+          <p><b>Kế hoạch tiếp theo:</b> ${r.next_steps}</p>
+          ${r.attachment_url ? `<p><b>Minh chứng:</b> <a href="${r.attachment_url}" target="_blank">🔗 Xem tài liệu</a></p>` : ''}
+        </div>
+        ${r.review_note ? `
+          <div style="margin-top:8px;padding:8px;background:#f8fafc;border-radius:4px;font-size:12px">
+            <b>Nhận xét Phòng KHCN:</b> ${r.review_note}
+            ${r.reviewed_at ? `<span style="color:#94a3b8;margin-left:8px">(${fmtDate(r.reviewed_at)})</span>` : ''}
+          </div>` : ''}
+        <div style="font-size:12px;color:#94a3b8;margin-top:6px">Nộp: ${fmtDate(r.submitted_at)}</div>
+      </div>`).join('');
   } catch(e) { listEl.innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
+}
+
+async function loadProgressTimeline(pid) {
+  const el = document.getElementById('progress-timeline');
+  if (!pid) { el.innerHTML = '<p class="empty">Chọn đề tài để xem timeline.</p>'; return; }
+  try {
+    const tl = await API.get(`/progress/proposals/${pid}/timeline`);
+    const latestPct = tl.latest_completion_pct || 0;
+
+    // Progress bar
+    let html = `
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-weight:600">${tl.proposal_title}</span>
+          <span style="color:#3b82f6;font-weight:700">${latestPct}% hoàn thành</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:99px;height:12px;overflow:hidden">
+          <div style="background:${latestPct>=100?'#16a34a':latestPct>=50?'#3b82f6':'#f59e0b'};height:100%;width:${latestPct}%;transition:width 0.5s;border-radius:99px"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-top:4px">
+          <span>PI: ${tl.pi_name||'—'}</span>
+          <span>Thời gian: ${tl.duration_months||'—'} tháng</span>
+          <span>Báo cáo: ${tl.total_reports} kỳ</span>
+        </div>
+      </div>`;
+
+    // Combined timeline
+    const events = [];
+    (tl.status_history || []).forEach(h => events.push({ ...h, _type: 'status', _date: h.changed_at }));
+    (tl.progress_reports || []).forEach(r => events.push({ ...r, _type: 'report', _date: r.submitted_at }));
+    events.sort((a,b) => new Date(a._date) - new Date(b._date));
+
+    html += '<div style="position:relative;padding-left:24px">';
+    events.forEach((ev, i) => {
+      const isLast = i === events.length - 1;
+      if (ev._type === 'status') {
+        html += `
+          <div style="position:relative;margin-bottom:16px">
+            <div style="position:absolute;left:-20px;top:2px;width:12px;height:12px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 2px #3b82f6"></div>
+            ${!isLast ? '<div style="position:absolute;left:-15px;top:14px;bottom:-16px;width:2px;background:#e5e7eb"></div>' : ''}
+            <div style="font-size:13px">
+              <span style="font-weight:600;color:#1e293b">${ev.to_status}</span>
+              <span style="color:#94a3b8;margin-left:8px;font-size:12px">${fmtDate(ev._date)}</span>
+              <div style="color:#64748b;font-size:12px">${ev.action}${ev.note ? ` — <span style="color:#ef4444">${ev.note}</span>` : ''}</div>
+            </div>
+          </div>`;
+      } else {
+        const sc = { SUBMITTED:'#6b7280', ACCEPTED:'#16a34a', NEEDS_REVISION:'#d97706', DELAYED:'#dc2626' };
+        html += `
+          <div style="position:relative;margin-bottom:16px">
+            <div style="position:absolute;left:-20px;top:2px;width:12px;height:12px;border-radius:50%;background:${sc[ev.status]||'#ccc'};border:2px solid #fff;box-shadow:0 0 0 2px ${sc[ev.status]||'#ccc'}"></div>
+            ${!isLast ? '<div style="position:absolute;left:-15px;top:14px;bottom:-16px;width:2px;background:#e5e7eb"></div>' : ''}
+            <div style="font-size:13px;background:#f8fafc;padding:8px;border-radius:6px">
+              <div style="display:flex;justify-content:space-between">
+                <span style="font-weight:600">📊 Báo cáo kỳ #${ev.report_order}${ev.report_period ? ` — ${ev.report_period}` : ''}</span>
+                <span style="font-weight:700;color:${sc[ev.status]||'#333'}">${ev.completion_pct}%</span>
+              </div>
+              <div style="color:#64748b;font-size:12px;margin-top:2px">${fmtDate(ev._date)}
+                ${ev.is_overdue ? '<span style="color:#dc2626;margin-left:8px">⚠️ Quá hạn</span>' : ''}
+              </div>
+            </div>
+          </div>`;
+      }
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
 }
 
 
@@ -915,12 +1112,12 @@ async function confirmAcceptance(id, decision) {
 
 
 // ══════════════════════════════════════════════════════════════════
-// PAGE: LEADERSHIP — MONITOR
+// PAGE: LEADERSHIP — MONITOR (legacy redirect to progress-staff)
 // ══════════════════════════════════════════════════════════════════
 registerPage('monitor', async () => {
   _monitorPage = 1;
   const el = document.getElementById('page-monitor');
-  el.innerHTML = `<div class="section-header"><h2>Theo dõi tiến độ</h2></div><div id="monitor-list">Đang tải...</div>`;
+  el.innerHTML = `<div class="section-header"><h2>📈 Theo dõi tiến độ đề tài</h2></div><div id="monitor-list">Đang tải...</div>`;
   await loadMonitorList();
 });
 
@@ -929,19 +1126,180 @@ async function loadMonitorList() {
     const data = await API.get(`/progress?page=${_monitorPage}&size=${PAGE_SIZE}`);
     const el = document.getElementById('monitor-list');
     if (!data.items.length) { el.innerHTML = '<p class="empty">Chưa có báo cáo.</p>'; return; }
+    const sc = { SUBMITTED:'#6b7280', ACCEPTED:'#16a34a', NEEDS_REVISION:'#d97706', DELAYED:'#dc2626' };
     let html = `<table>
-      <thead><tr><th>Đề tài</th><th>Người nộp</th><th>#</th><th>Tiến độ</th><th>Ngày nộp</th></tr></thead>
+      <thead><tr><th>Đề tài</th><th>Người nộp</th><th>Kỳ</th><th>Tiến độ</th><th>Trạng thái</th><th>Ngày nộp</th></tr></thead>
       <tbody>${data.items.map(r => `<tr>
-        <td>${r.proposal_id}</td><td>${r.submitted_by_name}</td><td>${r.report_order}</td>
-        <td>${r.completion_pct}%</td><td>${fmtDateShort(r.submitted_at)}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.proposal_title||r.proposal_id}</td>
+        <td>${r.submitted_by_name||'—'}</td>
+        <td>${r.report_period||'#'+r.report_order}</td>
+        <td><b style="color:${sc[r.status]||'#333'}">${r.completion_pct}%</b>
+          ${r.is_overdue ? '<span style="color:#dc2626;font-size:11px"> ⚠️</span>' : ''}
+        </td>
+        <td><span style="color:${sc[r.status]||'#333'};font-size:12px;font-weight:600">${r.status}</span></td>
+        <td>${fmtDateShort(r.submitted_at)}</td>
       </tr>`).join('')}</tbody></table>`;
-    
     html += renderPagination(data.total, _monitorPage, 'gotoMonitorPage');
     el.innerHTML = html;
   } catch(e) { document.getElementById('monitor-list').innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
 }
 
 function gotoMonitorPage(p) { _monitorPage = p; loadMonitorList(); }
+
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: STAFF — PROGRESS MONITORING BOARD
+// ══════════════════════════════════════════════════════════════════
+let _progStaffPage = 1;
+let _progStaffFilter = 'ALL';
+
+registerPage('progress-staff', async () => {
+  _progStaffPage = 1;
+  const el = document.getElementById('page-progress-staff');
+  el.innerHTML = `
+    <div class="section-header"><h2>📊 Theo dõi tiến độ — Phòng KHCN</h2></div>
+    <div id="msg-prog-staff"></div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-weight:600;color:#374151">Lọc:</span>
+        ${['ALL','SUBMITTED','ACCEPTED','NEEDS_REVISION','DELAYED'].map(s =>
+          `<button class="btn btn-sm ${s==='ALL'?'btn-primary':'btn-secondary'}" id="filter-${s}" onclick="filterProgressStaff('${s}')">
+            ${s==='ALL'?'Tất cả':s}
+          </button>`).join('')}
+        <button class="btn btn-sm btn-danger" onclick="filterProgressStaff('OVERDUE')"
+          id="filter-OVERDUE" style="margin-left:8px">⚠️ Chậm tiến độ</button>
+      </div>
+    </div>
+    <div id="prog-staff-list">Đang tải...</div>`;
+  await loadProgressStaff();
+});
+
+async function filterProgressStaff(status) {
+  _progStaffFilter = status;
+  _progStaffPage = 1;
+  ['ALL','SUBMITTED','ACCEPTED','NEEDS_REVISION','DELAYED','OVERDUE'].forEach(s => {
+    const btn = document.getElementById(`filter-${s}`);
+    if (btn) btn.className = `btn btn-sm ${s === status ? 'btn-primary' : (s === 'OVERDUE' ? 'btn-danger' : 'btn-secondary')}`;
+  });
+  await loadProgressStaff();
+}
+
+async function loadProgressStaff() {
+  const el = document.getElementById('prog-staff-list');
+  try {
+    let url;
+    if (_progStaffFilter === 'OVERDUE') {
+      url = `/progress/overdue?page=${_progStaffPage}&size=${PAGE_SIZE}`;
+    } else if (_progStaffFilter === 'ALL') {
+      url = `/progress?page=${_progStaffPage}&size=${PAGE_SIZE}`;
+    } else {
+      url = `/progress?status=${_progStaffFilter}&page=${_progStaffPage}&size=${PAGE_SIZE}`;
+    }
+    const data = await API.get(url);
+    if (!data.items.length) { el.innerHTML = '<p class="empty">Không có báo cáo.</p>'; return; }
+
+    const sc = { SUBMITTED:'#6b7280', ACCEPTED:'#16a34a', NEEDS_REVISION:'#d97706', DELAYED:'#dc2626' };
+    const sl = { SUBMITTED:'Đã nộp', ACCEPTED:'Chấp nhận', NEEDS_REVISION:'Cần bổ sung', DELAYED:'Chậm tiến độ' };
+
+    let html = `<table>
+      <thead><tr><th>Đề tài</th><th>Giảng viên</th><th>Kỳ báo cáo</th><th>Hoàn thành</th><th>Trạng thái</th><th>Ngày nộp</th><th>Thao tác</th></tr></thead>
+      <tbody>${data.items.map(r => `<tr style="${r.is_overdue ? 'background:#fef2f2' : ''}">
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.proposal_title||''}"><a href="#" onclick="viewProgressDetail('${r.id}');return false">${r.proposal_title||r.proposal_id}</a></td>
+        <td>${r.submitted_by_name||'—'}</td>
+        <td>${r.report_period||'Kỳ #'+r.report_order}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="background:#e5e7eb;border-radius:99px;height:6px;width:60px;overflow:hidden">
+              <div style="background:${sc[r.status]||'#ccc'};height:100%;width:${r.completion_pct}%"></div>
+            </div>
+            <span style="font-weight:600;font-size:13px">${r.completion_pct}%</span>
+            ${r.is_overdue ? '<span style="color:#dc2626;font-size:11px">⚠️</span>' : ''}
+          </div>
+        </td>
+        <td><span style="color:${sc[r.status]||'#333'};font-weight:600;font-size:12px">${sl[r.status]||r.status}</span></td>
+        <td>${fmtDateShort(r.submitted_at)}</td>
+        <td>
+          <button class="btn btn-sm btn-secondary" onclick="viewProgressDetail('${r.id}')">Xem</button>
+          ${r.status === 'SUBMITTED' ? `<button class="btn btn-sm btn-primary" onclick="openProgressReview('${r.id}')">Review</button>` : ''}
+        </td>
+      </tr>`).join('')}</tbody></table>`;
+
+    html += renderPagination(data.total, _progStaffPage, 'gotoProgStaffPage');
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
+}
+
+function gotoProgStaffPage(p) { _progStaffPage = p; loadProgressStaff(); }
+
+async function viewProgressDetail(reportId) {
+  try {
+    const r = await API.get(`/progress/reports/${reportId}`);
+    const sc = { SUBMITTED:'#6b7280', ACCEPTED:'#16a34a', NEEDS_REVISION:'#d97706', DELAYED:'#dc2626' };
+    const sl = { SUBMITTED:'Đã nộp', ACCEPTED:'Chấp nhận', NEEDS_REVISION:'Cần bổ sung', DELAYED:'Chậm tiến độ' };
+    document.getElementById('modal-view-title').textContent = `Báo cáo tiến độ kỳ #${r.report_order}${r.report_period ? ' — ' + r.report_period : ''}`;
+    document.getElementById('modal-view-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <p><b>Đề tài:</b> ${r.proposal_title||r.proposal_id}</p>
+          <p><b>Giảng viên:</b> ${r.submitted_by_name||'—'}</p>
+          <p><b>Tiến độ:</b> <span style="font-size:20px;font-weight:700;color:${sc[r.status]||'#333'}">${r.completion_pct}%</span></p>
+          <p><b>Trạng thái:</b> <span style="color:${sc[r.status]||'#333'};font-weight:600">${sl[r.status]||r.status}</span>
+            ${r.is_overdue ? ' <span style="color:#dc2626">⚠️ Quá hạn</span>' : ''}</p>
+          <p><b>Ngày nộp:</b> ${fmtDate(r.submitted_at)}</p>
+          ${r.attachment_url ? `<p><b>Minh chứng:</b> <a href="${r.attachment_url}" target="_blank">🔗 Xem tài liệu</a></p>` : ''}
+        </div>
+        <div>
+          ${r.review_note ? `<div style="padding:10px;background:#f0fdf4;border-radius:6px;border-left:3px solid #16a34a">
+            <b>Nhận xét Phòng KHCN:</b><br>${r.review_note}
+            <div style="font-size:12px;color:#94a3b8;margin-top:4px">${fmtDate(r.reviewed_at)}</div>
+          </div>` : '<p style="color:#94a3b8">Chưa có review.</p>'}
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <h4>Công việc đã hoàn thành:</h4><p style="background:#f8fafc;padding:10px;border-radius:4px">${r.content}</p>
+        ${r.products_created ? `<h4>Sản phẩm:</h4><p style="background:#f8fafc;padding:10px;border-radius:4px">${r.products_created}</p>` : ''}
+        ${r.issues ? `<h4>Khó khăn / Rủi ro:</h4><p style="background:#fff7ed;padding:10px;border-radius:4px;border-left:3px solid #f59e0b">${r.issues}</p>` : ''}
+        <h4>Kế hoạch tiếp theo:</h4><p style="background:#f8fafc;padding:10px;border-radius:4px">${r.next_steps}</p>
+      </div>`;
+    openModal('modal-view');
+  } catch(e) { alert(e.message); }
+}
+
+async function openProgressReview(reportId) {
+  document.getElementById('progress-review-id').value = reportId;
+  document.getElementById('progress-review-status').value = 'ACCEPTED';
+  document.getElementById('progress-review-note').value = '';
+  // Load report detail for context
+  try {
+    const r = await API.get(`/progress/reports/${reportId}`);
+    const sc = { SUBMITTED:'#6b7280', ACCEPTED:'#16a34a', NEEDS_REVISION:'#d97706', DELAYED:'#dc2626' };
+    document.getElementById('modal-progress-review-body').innerHTML = `
+      <div style="background:#f8fafc;padding:10px;border-radius:6px;margin-bottom:12px">
+        <b>${r.proposal_title||r.proposal_id}</b> | Kỳ #${r.report_order}${r.report_period?' — '+r.report_period:''}
+        <div style="margin-top:4px;color:#374151;font-size:13px">
+          <span style="font-weight:700;font-size:18px;color:${sc[r.status]||'#333'}">${r.completion_pct}%</span> hoàn thành
+          ${r.is_overdue ? ' <span style="color:#dc2626">⚠️ Quá hạn</span>' : ''}
+        </div>
+        <p style="font-size:12px;color:#64748b;margin-top:6px">${r.content.substring(0,200)}...</p>
+      </div>`;
+  } catch(e) { document.getElementById('modal-progress-review-body').innerHTML = ''; }
+  openModal('modal-progress-review');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btn-confirm-progress-review')?.addEventListener('click', async () => {
+    const reportId = document.getElementById('progress-review-id').value;
+    const status = document.getElementById('progress-review-status').value;
+    const note = document.getElementById('progress-review-note').value.trim();
+    if (status === 'NEEDS_REVISION' && note.length < 5) return alert('Vui lòng nhập ghi chú cho yêu cầu bổ sung');
+    try {
+      await API.post(`/progress/reports/${reportId}/review`, { status, note: note || null });
+      closeModal('modal-progress-review');
+      showMsg(document.getElementById('msg-prog-staff'), 'Review thành công!', 'success');
+      await loadProgressStaff();
+    } catch(e) { alert(e.message); }
+  });
+});
 
 
 // ══════════════════════════════════════════════════════════════════
@@ -1139,7 +1497,8 @@ async function loadUsers() {
 function gotoUserPage(p) { _userPage = p; loadUsers(); }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const depts = await API.get('/catalog/departments').catch(() => []);
+  const deptsResp = await API.get('/catalog/departments?size=100').catch(() => ({ items: [] }));
+  const depts = deptsResp.items || deptsResp || [];
   const deptSel = document.getElementById('user-dept');
   if (deptSel) deptSel.innerHTML = `<option value="">— Chọn Khoa —</option>` + depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
 

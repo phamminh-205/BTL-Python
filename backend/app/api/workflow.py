@@ -12,12 +12,10 @@ from app.database import get_db
 from app.models.user import User
 from app.models.proposal import Proposal, ProposalStatusHistory
 from app.models.review import Review
-from app.models.progress import ProgressReport
 from app.models.acceptance import AcceptanceDossier, AcceptanceReview
 from app.models.council import Council
 from app.schemas import (
     ReviewSubmit, ReviewResponse,
-    ProgressCreate, ProgressResponse, ProgressListResponse,
     AcceptanceSubmit, AcceptanceReturn, AcceptanceDossierResponse,
     AcceptanceReviewSubmit, AcceptanceReviewResponse,
 )
@@ -155,104 +153,8 @@ async def list_reviews_for_proposal(
     ]
 
 
-# ══════════════════════════════════════════════════════════════════
-# PROGRESS REPORTS
-# ══════════════════════════════════════════════════════════════════
 
-@router.get("/progress", response_model=ProgressListResponse)
-async def list_all_progress(
-    page: int = Query(1, ge=1),
-    size: int = Query(20, ge=1, le=50),
-    current_user: User = Depends(require_roles("STAFF", "LEADERSHIP", "ADMIN")),
-    db: Session = Depends(get_db),
-):
-    """List all progress reports (STAFF/LEADERSHIP)."""
-    query = db.query(ProgressReport).options(joinedload(ProgressReport.submitted_by_user))
-    total = query.count()
-    reports = query.order_by(ProgressReport.submitted_at.desc()).offset((page - 1) * size).limit(size).all()
-    return ProgressListResponse(
-        items=[_progress_to_resp(r) for r in reports],
-        total=total, page=page, size=size,
-    )
-
-
-@router.get("/progress/proposals/{proposal_id}", response_model=list[ProgressResponse])
-async def list_proposal_progress(
-    proposal_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """List progress reports for a specific proposal."""
-    proposal = db.query(Proposal).filter(Proposal.id == proposal_id).first()
-    if not proposal:
-        raise NotFoundException("Đề tài")
-    if current_user.role == "FACULTY":
-        from app.models.proposal import ProposalMember
-        is_member = db.query(ProposalMember).filter(
-            ProposalMember.proposal_id == proposal_id,
-            ProposalMember.user_id == current_user.id,
-        ).first()
-        if proposal.pi_id != current_user.id and not is_member:
-            raise ForbiddenException()
-
-    reports = (
-        db.query(ProgressReport)
-        .options(joinedload(ProgressReport.submitted_by_user))
-        .filter(ProgressReport.proposal_id == proposal_id)
-        .order_by(ProgressReport.report_order)
-        .all()
-    )
-    return [_progress_to_resp(r) for r in reports]
-
-
-@router.post("/progress/proposals/{proposal_id}", response_model=ProgressResponse, status_code=201)
-async def submit_progress(
-    proposal_id: UUID,
-    body: ProgressCreate,
-    current_user: User = Depends(require_roles("FACULTY")),
-    db: Session = Depends(get_db),
-):
-    """Submit a progress report (PI only, proposal must be IN_PROGRESS)."""
-    proposal = db.query(Proposal).filter(Proposal.id == proposal_id).first()
-    if not proposal:
-        raise NotFoundException("Đề tài")
-    if proposal.pi_id != current_user.id:
-        raise ForbiddenException()
-    if proposal.status != "IN_PROGRESS":
-        raise BadRequestException("Chỉ có thể nộp báo cáo tiến độ khi đề tài đang thực hiện")
-
-    last = (
-        db.query(ProgressReport)
-        .filter(ProgressReport.proposal_id == proposal_id)
-        .order_by(ProgressReport.report_order.desc())
-        .first()
-    )
-    next_order = (last.report_order + 1) if last else 1
-
-    if last and body.completion_pct < last.completion_pct:
-        raise BadRequestException(f"Tiến độ không được giảm (hiện tại: {last.completion_pct}%)")
-
-    report = ProgressReport(
-        proposal_id=proposal_id, submitted_by=current_user.id,
-        report_order=next_order, report_period=body.report_period,
-        content=body.content, completion_pct=body.completion_pct,
-        issues=body.issues, next_steps=body.next_steps,
-    )
-    db.add(report)
-    db.commit()
-    report = db.query(ProgressReport).options(joinedload(ProgressReport.submitted_by_user)).filter(ProgressReport.id == report.id).first()
-    return _progress_to_resp(report)
-
-
-def _progress_to_resp(r: ProgressReport) -> ProgressResponse:
-    return ProgressResponse(
-        id=r.id, proposal_id=r.proposal_id, submitted_by=r.submitted_by,
-        submitted_by_name=r.submitted_by_user.full_name if r.submitted_by_user else None,
-        report_order=r.report_order, report_period=r.report_period,
-        content=r.content, completion_pct=r.completion_pct,
-        issues=r.issues, next_steps=r.next_steps,
-        status=r.status, submitted_at=r.submitted_at,
-    )
+# Note: Progress report endpoints moved to api/progress.py
 
 
 # ══════════════════════════════════════════════════════════════════

@@ -374,21 +374,186 @@ def seed():
         db.flush()
         print(f"  ✅ {len(mock_proposals)} proposals")
 
+        # ── 9. Approved proposals (for Progress Management) ──────────────
+        from app.models.progress import ProgressReport
+
+        approved_proposal = Proposal(
+            title="Xây dựng hệ thống học máy hỗ trợ phát hiện sớm bệnh tiểu đường",
+            summary="Nghiên cứu áp dụng các thuật toán ML để phân tích dữ liệu y tế...",
+            objectives="Xây dựng mô hình dự báo với độ chính xác >85%, triển khai thử nghiệm lâm sàng",
+            methodology="Thu thập dữ liệu 10.000 bệnh nhân, tiền xử lý, huấn luyện Random Forest và XGBoost",
+            expected_outcomes="01 mô hình ML, 01 ứng dụng web thử nghiệm, 01 bài báo ISI",
+            duration_months=12,
+            budget_estimated=200000000,
+            pi_id=users[4].id,  # faculty1
+            department_id=departments[0].id,
+            field_id=fields[0].id,
+            category_id=categories[0].id,
+            period_id=periods[0].id,
+            status="IN_PROGRESS",
+            attachment_url="https://example.com/docs/ml-diabetes.pdf",
+            submitted_at=datetime(2026, 1, 20, tzinfo=timezone.utc),
+            approved_at=datetime(2026, 2, 10, tzinfo=timezone.utc),
+        )
+
+        approved_proposal2 = Proposal(
+            title="Nghiên cứu giải pháp an toàn thông tin cho hệ thống chính phủ điện tử",
+            summary="Phân tích lỗ hổng bảo mật và đề xuất kiến trúc Zero-Trust cho hệ thống CPDT...",
+            objectives="Xác định top 10 lỗ hổng phổ biến, thiết kế framework bảo mật chuẩn ISO 27001",
+            methodology="Penetration testing, phân tích mã nguồn, đánh giá cấu hình hạ tầng",
+            expected_outcomes="Framework bảo mật, 02 bài báo trong nước, bộ công cụ tự động kiểm tra",
+            duration_months=12,
+            budget_estimated=120000000,
+            pi_id=users[6].id,  # faculty3
+            department_id=departments[0].id,
+            field_id=fields[2].id,
+            category_id=categories[0].id,
+            period_id=periods[0].id,
+            status="APPROVED",
+            attachment_url="https://example.com/docs/security-egov.pdf",
+            submitted_at=datetime(2026, 1, 25, tzinfo=timezone.utc),
+            approved_at=datetime(2026, 2, 15, tzinfo=timezone.utc),
+        )
+
+        db.add_all([approved_proposal, approved_proposal2])
+        db.flush()
+
+        # Status history for approved proposals
+        db.add_all([
+            ProposalStatusHistory(
+                proposal_id=approved_proposal.id,
+                from_status=None, to_status="SUBMITTED",
+                action="submit", actor_id=users[4].id,
+            ),
+            ProposalStatusHistory(
+                proposal_id=approved_proposal.id,
+                from_status="SUBMITTED", to_status="VALIDATED",
+                action="validate", actor_id=users[1].id,
+            ),
+            ProposalStatusHistory(
+                proposal_id=approved_proposal.id,
+                from_status="VALIDATED", to_status="APPROVED",
+                action="approve", actor_id=users[3].id,
+            ),
+            ProposalStatusHistory(
+                proposal_id=approved_proposal.id,
+                from_status="APPROVED", to_status="IN_PROGRESS",
+                action="start_progress", actor_id=users[4].id,
+            ),
+            ProposalStatusHistory(
+                proposal_id=approved_proposal2.id,
+                from_status=None, to_status="SUBMITTED",
+                action="submit", actor_id=users[6].id,
+            ),
+            ProposalStatusHistory(
+                proposal_id=approved_proposal2.id,
+                from_status="SUBMITTED", to_status="VALIDATED",
+                action="validate", actor_id=users[1].id,
+            ),
+            ProposalStatusHistory(
+                proposal_id=approved_proposal2.id,
+                from_status="VALIDATED", to_status="APPROVED",
+                action="approve", actor_id=users[3].id,
+            ),
+        ])
+        db.flush()
+
+        # Progress reports for in-progress proposal
+        progress_reports = [
+            ProgressReport(
+                proposal_id=approved_proposal.id,
+                submitted_by=users[4].id,
+                report_order=1,
+                report_period="Tháng 2/2026",
+                content=(
+                    "Đã hoàn thành giai đoạn thu thập dữ liệu ban đầu với 3.500/10.000 bản ghi bệnh nhân. "
+                    "Tiền xử lý dữ liệu đạt 60%, loại bỏ dữ liệu thiếu và chuẩn hóa các chỉ số sinh hóa. "
+                    "Thiết lập môi trường thực nghiệm trên cluster GPU."
+                ),
+                products_created="Bộ dữ liệu đã tiền xử lý (3.500 bản ghi), Báo cáo phân tích dữ liệu ban đầu",
+                completion_pct=25,
+                issues="Khó khăn trong xin phép truy cập dữ liệu từ bệnh viện thứ 2. Đang chờ phê duyệt từ Hội đồng Y đức.",
+                next_steps="Hoàn thiện thu thập dữ liệu, bắt đầu thực nghiệm với Random Forest baseline.",
+                attachment_url="https://example.com/reports/baocao-kt1-thang2.pdf",
+                status="ACCEPTED",
+                reviewed_by=users[1].id,
+                reviewed_at=datetime(2026, 3, 5, tzinfo=timezone.utc),
+                review_note="Tiến độ phù hợp với kế hoạch. Cần đẩy nhanh phần thu thập dữ liệu.",
+                submitted_at=datetime(2026, 3, 1, tzinfo=timezone.utc),
+            ),
+            ProgressReport(
+                proposal_id=approved_proposal.id,
+                submitted_by=users[4].id,
+                report_order=2,
+                report_period="Tháng 3-4/2026",
+                content=(
+                    "Đã thu thập đủ 10.000 bản ghi bệnh nhân từ 3 bệnh viện. "
+                    "Hoàn thiện pipeline tiền xử lý dữ liệu tự động. "
+                    "Thực nghiệm mô hình Random Forest đạt AUC = 0.82, XGBoost đạt AUC = 0.87. "
+                    "Bắt đầu tinh chỉnh siêu tham số."
+                ),
+                products_created=(
+                    "Dataset đầy đủ (10.000 bản ghi), Pipeline tiền xử lý, "
+                    "Báo cáo so sánh mô hình ML lần 1"
+                ),
+                completion_pct=55,
+                issues="Mô hình hiện tại chưa đạt ngưỡng 85% yêu cầu. Cần thêm kỹ thuật feature engineering.",
+                next_steps=(
+                    "Áp dụng SMOTE để cân bằng dữ liệu mất cân bằng lớp. "
+                    "Thử nghiệm Neural Network. Viết bản thảo bài báo lần 1."
+                ),
+                attachment_url="https://example.com/reports/baocao-kt2-thang4.pdf",
+                status="NEEDS_REVISION",
+                reviewed_by=users[1].id,
+                reviewed_at=datetime(2026, 4, 18, tzinfo=timezone.utc),
+                review_note="Cần bổ sung chi tiết về phương pháp đánh giá mô hình và kế hoạch cụ thể để đạt 85%.",
+                submitted_at=datetime(2026, 4, 15, tzinfo=timezone.utc),
+            ),
+            ProgressReport(
+                proposal_id=approved_proposal.id,
+                submitted_by=users[4].id,
+                report_order=3,
+                report_period="Tháng 4/2026",
+                content=(
+                    "Cập nhật theo yêu cầu review: đã bổ sung chi tiết đánh giá với K-Fold 10 và ROC Curve. "
+                    "Áp dụng SMOTE: Random Forest AUC cải thiện lên 0.88, XGBoost AUC = 0.91. "
+                    "Bắt đầu xây dựng prototype ứng dụng web Flask."
+                ),
+                products_created="Báo cáo đánh giá mô hình chi tiết, Prototype web v0.1",
+                completion_pct=65,
+                issues="Thời gian train Neural Network khá lâu trên GPU hiện có.",
+                next_steps=(
+                    "Hoàn thiện prototype web, viết bài báo ISI, "
+                    "chuẩn bị thử nghiệm lâm sàng giai đoạn 1."
+                ),
+                attachment_url="https://example.com/reports/baocao-kt3-thang4-update.pdf",
+                status="SUBMITTED",
+                submitted_at=datetime(2026, 4, 19, tzinfo=timezone.utc),
+            ),
+        ]
+        db.add_all(progress_reports)
+        db.flush()
+        print(f"  ✅ {len(progress_reports)} progress reports")
+
         db.commit()
         print()
         print("🎉 Seed data inserted successfully!")
         print()
-        print("┌─────────────────────────────────────────────────┐")
-        print("│  📋 Demo Accounts (password: password123)       │")
-        print("├─────────────────────────────────────────────────┤")
-        print("│  Admin:       admin@university.edu.vn           │")
-        print("│  Staff:       staff@university.edu.vn           │")
-        print("│  Leadership:  leader@university.edu.vn          │")
-        print("│  Faculty:     faculty1@university.edu.vn        │")
-        print("│  Faculty:     faculty2@university.edu.vn        │")
-        print("│  Reviewer:    reviewer1@university.edu.vn       │")
-        print("│  Reviewer:    reviewer2@university.edu.vn       │")
-        print("└─────────────────────────────────────────────────┘")
+        print("┌──────────────────────────────────────────────────────┐")
+        print("│  📋 Demo Accounts (password: password123)            │")
+        print("├──────────────────────────────────────────────────────┤")
+        print("│  Admin:       admin@university.edu.vn                │")
+        print("│  Staff:       staff@university.edu.vn                │")
+        print("│  Leadership:  leader@university.edu.vn               │")
+        print("│  Faculty:     faculty1@university.edu.vn  (PI)       │")
+        print("│  Faculty:     faculty2@university.edu.vn             │")
+        print("│  Faculty:     faculty3@university.edu.vn  (PI #2)    │")
+        print("│  Reviewer:    reviewer1@university.edu.vn            │")
+        print("│  Reviewer:    reviewer2@university.edu.vn            │")
+        print("└──────────────────────────────────────────────────────┘")
+        print()
+        print("📊 Progress data: faculty1 has 1 IN_PROGRESS project with 3 reports")
+        print("📊 Progress data: faculty3 has 1 APPROVED project (not started yet)")
 
     except Exception as e:
         db.rollback()

@@ -502,28 +502,58 @@ class ReviewResponse(BaseModel):
 # ══════════════════════════════════════════════════════════════════
 
 class ProgressCreate(BaseModel):
-    report_period: Optional[str] = Field(None, max_length=50)
-    content: str = Field(..., min_length=50)
-    completion_pct: Decimal = Field(..., ge=0, le=100)
+    report_period: Optional[str] = Field(None, max_length=100)
+    content: str = Field(..., min_length=20, description="Công việc đã hoàn thành")
+    products_created: Optional[str] = Field(None, description="Sản phẩm đã tạo ra")
+    completion_pct: Decimal = Field(..., ge=0, le=100, description="Phần trăm hoàn thành")
+    issues: Optional[str] = Field(None, description="Khó khăn / rủi ro")
+    next_steps: str = Field(..., min_length=10, description="Kế hoạch tiếp theo")
+    attachment_url: Optional[str] = Field(None, max_length=500, description="Minh chứng đính kèm")
+
+
+class ProgressUpdate(BaseModel):
+    report_period: Optional[str] = Field(None, max_length=100)
+    content: Optional[str] = Field(None, min_length=20)
+    products_created: Optional[str] = None
+    completion_pct: Optional[Decimal] = Field(None, ge=0, le=100)
     issues: Optional[str] = None
-    next_steps: str = Field(..., min_length=20)
+    next_steps: Optional[str] = Field(None, min_length=10)
+    attachment_url: Optional[str] = Field(None, max_length=500)
+
+
+class ProgressReviewAction(BaseModel):
+    status: str = Field(..., pattern="^(ACCEPTED|NEEDS_REVISION|DELAYED)$")
+    note: Optional[str] = Field(None, min_length=5)
 
 
 class ProgressResponse(BaseModel):
     id: UUID
     proposal_id: UUID
+    proposal_title: Optional[str] = None
     submitted_by: UUID
     submitted_by_name: Optional[str] = None
     report_order: int
     report_period: Optional[str]
     content: str
+    products_created: Optional[str] = None
     completion_pct: Decimal
     issues: Optional[str]
     next_steps: str
+    attachment_url: Optional[str] = None
     status: str
+    is_overdue: bool = False
+    reviewed_by: Optional[UUID] = None
+    reviewed_by_name: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_note: Optional[str] = None
     submitted_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ProgressDetailResponse(ProgressResponse):
+    """Extended response with proposal context."""
+    pass
 
 
 class ProgressListResponse(BaseModel):
@@ -531,6 +561,33 @@ class ProgressListResponse(BaseModel):
     total: int
     page: int
     size: int
+
+
+class ProjectTimelineResponse(BaseModel):
+    proposal_id: UUID
+    proposal_title: str
+    proposal_status: str
+    pi_name: Optional[str] = None
+    duration_months: Optional[int] = None
+    approved_at: Optional[datetime] = None
+    created_at: datetime
+    status_history: List[Any] = []
+    progress_reports: List[ProgressResponse] = []
+    total_reports: int = 0
+    latest_completion_pct: float = 0.0
+
+
+class DashboardFacultyProgressResponse(BaseModel):
+    total_active_projects: int
+    items: List[Any] = []
+
+
+class DashboardStaffProgressResponse(BaseModel):
+    total_in_progress: int
+    total_approved_not_started: int
+    total_overdue_reports: int
+    pending_review_count: int
+    status_breakdown: Any = {}
 
 
 # ══════════════════════════════════════════════════════════════════
