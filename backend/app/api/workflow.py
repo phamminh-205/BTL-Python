@@ -316,7 +316,7 @@ def _dossier_to_resp(dossier: AcceptanceDossier, user) -> AcceptanceDossierRespo
         final_report=dossier.final_report, achievements=dossier.achievements,
         deliverables=dossier.deliverables, status=dossier.status,
         revision_reason=dossier.revision_reason,
-        submitted_at=dossier.submitted_at, updated_at=dossier.updated_at,
+        submitted_at=dossier.submitted_at, updated_at=dossier.updated_at,created_at=dossier.created_at,
     )
 
 

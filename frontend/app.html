@@ -1,311 +1,367 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SciRes — Dashboard</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
-<div id="app">
-  <!-- Sidebar -->
-  <div id="sidebar">
-    <div class="app-title">🔬 SciRes</div>
-    <div class="user-info" style="position:relative">
-      <div id="user-name">...</div>
-      <div id="user-role" style="font-size:11px;color:#64748b"></div>
-      <div id="notif-bell" style="position:absolute; top:12px; right:15px; cursor:pointer">
-        <span>🔔</span>
-        <span id="notif-count" style="position:absolute; top:-8px; right:-8px; background:#ef4444; color:white; font-size:10px; padding:1px 4px; border-radius:10px; display:none">0</span>
-      </div>
-    </div>
-    <nav id="nav"></nav>
-    <button id="logout-btn">Đăng xuất</button>
-  </div>
-
-  <!-- Main Content -->
-  <div id="content">
-    <!-- Dashboard -->
-    <div id="page-dashboard" class="active page"></div>
-
-    <!-- Edit Proposal Modal (instead of full page to keep context simple) -->
-    <div id="modal-edit-proposal" class="modal-overlay" style="display:none">
-      <div class="modal" style="width:680px">
-        <h3>Sửa đề xuất (Bản nháp)</h3>
-        <div id="msg-edit-proposal"></div>
-        <form id="edit-proposal-form">
-          <input type="hidden" name="id" id="edit-prop-id">
-          <div class="form-group"><label>Tên đề tài *</label><input name="title" id="edit-prop-title" required></div>
-          <div class="form-row">
-            <div class="form-group"><label>Đợt đăng ký *</label><select name="period_id" id="edit-prop-period"></select></div>
-            <div class="form-group"><label>Lĩnh vực *</label><select name="field_id" id="edit-prop-field"></select></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Loại đề tài</label><select name="category_id" id="edit-prop-category"></select></div>
-            <div class="form-group"><label>Thời gian (tháng) *</label><input name="duration_months" id="edit-prop-duration" type="number" min="1" max="36"></div>
-          </div>
-          <div class="form-group"><label>Tài liệu đính kèm (URL)</label><input name="attachment_url" id="edit-prop-attachment" placeholder="https://..."></div>
-          <div class="form-group"><label>Tóm tắt</label><textarea name="summary" id="edit-prop-summary" rows="2"></textarea></div>
-          <div class="form-group"><label>Mục tiêu</label><textarea name="objectives" id="edit-prop-objectives" rows="2"></textarea></div>
-          <div class="form-group"><label>Phương pháp</label><textarea name="methodology" id="edit-prop-methodology" rows="2"></textarea></div>
-          <div class="form-group"><label>Kết quả dự kiến</label><textarea name="expected_outcomes" id="edit-prop-outcomes" rows="2"></textarea></div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-proposal')">Hủy</button>
-            <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Faculty pages -->
-    <div id="page-my-proposals" class="page" style="display:none"></div>
-    <div id="page-create-proposal" class="page" style="display:none"></div>
-    <div id="page-progress" class="page" style="display:none"></div>
-    <div id="page-acceptance" class="page" style="display:none"></div>
-
-    <!-- Staff pages -->
-    <div id="page-validate" class="page" style="display:none"></div>
-    <div id="page-periods" class="page" style="display:none"></div>
-    <div id="page-councils" class="page" style="display:none"></div>
-    <div id="page-acceptance-staff" class="page" style="display:none"></div>
-    <div id="page-progress-staff" class="page" style="display:none"></div>
-
-    <!-- Leadership pages -->
-    <div id="page-approve" class="page" style="display:none"></div>
-    <div id="page-accept-confirm" class="page" style="display:none"></div>
-    <div id="page-monitor" class="page" style="display:none"></div>
-
-    <!-- Reviewer pages -->
-    <div id="page-my-reviews" class="page" style="display:none"></div>
-    <div id="page-my-acceptance" class="page" style="display:none"></div>
-
-    <!-- Admin pages -->
-    <div id="page-users" class="page" style="display:none"></div>
-    <div id="page-catalog" class="page" style="display:none">
-      <div style="display:flex; gap:20px;">
-        <div style="width:250px;">
-          <h3>Quản lý danh mục</h3>
-          <ul id="catalog-nav" style="list-style:none; padding:0;">
-            <!-- Render via JS -->
-          </ul>
+  <div id="app">
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <div class="app-title">🔬 SciRes</div>
+      <div class="user-info" style="position:relative">
+        <div id="user-name">...</div>
+        <div id="user-role" style="font-size:11px;color:#64748b"></div>
+        <div id="notif-bell" style="position:absolute; top:12px; right:15px; cursor:pointer">
+          <span>🔔</span>
+          <span id="notif-count"
+            style="position:absolute; top:-8px; right:-8px; background:#ef4444; color:white; font-size:10px; padding:1px 4px; border-radius:10px; display:none">0</span>
         </div>
-        <div style="flex:1;">
-          <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-            <div style="display:flex; gap:10px;">
-              <input type="text" id="catalog-search" placeholder="Tìm kiếm..." style="padding:6px;border:1px solid #ccc;border-radius:4px;">
-              <select id="catalog-status" style="padding:6px;border:1px solid #ccc;border-radius:4px;">
-                <option value="">Tất cả trạng thái</option>
-                <option value="true">Đang hoạt động</option>
-                <option value="false">Đã vô hiệu hóa</option>
-              </select>
+      </div>
+      <nav id="nav"></nav>
+      <button id="logout-btn">Đăng xuất</button>
+    </div>
+
+    <!-- Main Content -->
+    <div id="content">
+      <!-- Dashboard -->
+      <div id="page-dashboard" class="active page"></div>
+
+      <!-- Edit Proposal Modal (instead of full page to keep context simple) -->
+      <div id="modal-edit-proposal" class="modal-overlay" style="display:none">
+        <div class="modal" style="width:680px">
+          <h3>Sửa đề xuất (Bản nháp)</h3>
+          <div id="msg-edit-proposal"></div>
+          <form id="edit-proposal-form">
+            <input type="hidden" name="id" id="edit-prop-id">
+            <div class="form-group"><label>Tên đề tài *</label><input name="title" id="edit-prop-title" required></div>
+            <div class="form-row">
+              <div class="form-group"><label>Đợt đăng ký *</label><select name="period_id"
+                  id="edit-prop-period"></select></div>
+              <div class="form-group"><label>Lĩnh vực *</label><select name="field_id" id="edit-prop-field"></select>
+              </div>
             </div>
-            <button id="btn-add-catalog" class="btn btn-primary">+ Thêm mới</button>
+            <div class="form-row">
+              <div class="form-group"><label>Loại đề tài</label><select name="category_id"
+                  id="edit-prop-category"></select></div>
+              <div class="form-group"><label>Thời gian (tháng) *</label><input name="duration_months"
+                  id="edit-prop-duration" type="number" min="1" max="36"></div>
+            </div>
+            <div class="form-group"><label>Tài liệu đính kèm (URL)</label><input name="attachment_url"
+                id="edit-prop-attachment" placeholder="https://..."></div>
+            <div class="form-group"><label>Tóm tắt</label><textarea name="summary" id="edit-prop-summary"
+                rows="2"></textarea></div>
+            <div class="form-group"><label>Mục tiêu</label><textarea name="objectives" id="edit-prop-objectives"
+                rows="2"></textarea></div>
+            <div class="form-group"><label>Phương pháp</label><textarea name="methodology" id="edit-prop-methodology"
+                rows="2"></textarea></div>
+            <div class="form-group"><label>Kết quả dự kiến</label><textarea name="expected_outcomes"
+                id="edit-prop-outcomes" rows="2"></textarea></div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-proposal')">Hủy</button>
+              <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Faculty pages -->
+      <div id="page-my-proposals" class="page" style="display:none"></div>
+      <div id="page-create-proposal" class="page" style="display:none"></div>
+      <div id="page-progress" class="page" style="display:none"></div>
+      <div id="page-acceptance" class="page" style="display:none"></div>
+
+      <!-- Staff pages -->
+      <div id="page-validate" class="page" style="display:none"></div>
+      <div id="page-periods" class="page" style="display:none"></div>
+      <div id="page-councils" class="page" style="display:none"></div>
+      <div id="page-acceptance-staff" class="page" style="display:none"></div>
+      <div id="page-progress-staff" class="page" style="display:none"></div>
+
+      <!-- Leadership pages -->
+      <div id="page-approve" class="page" style="display:none"></div>
+      <div id="page-accept-confirm" class="page" style="display:none"></div>
+      <div id="page-monitor" class="page" style="display:none"></div>
+
+      <!-- Reviewer pages -->
+      <div id="page-my-reviews" class="page" style="display:none"></div>
+      <div id="page-my-acceptance" class="page" style="display:none"></div>
+
+      <!-- Admin pages -->
+      <div id="page-users" class="page" style="display:none"></div>
+      <div id="page-catalog" class="page" style="display:none">
+        <div style="display:flex; gap:20px;">
+          <div style="width:250px;">
+            <h3>Quản lý danh mục</h3>
+            <ul id="catalog-nav" style="list-style:none; padding:0;">
+              <!-- Render via JS -->
+            </ul>
           </div>
-          <table class="table" style="width:100%">
-            <thead id="catalog-table-head"></thead>
-            <tbody id="catalog-table-body"></tbody>
-          </table>
-          <div id="catalog-pagination" style="margin-top:12px; display:flex; justify-content:center; gap:8px;"></div>
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+              <div style="display:flex; gap:10px;">
+                <input type="text" id="catalog-search" placeholder="Tìm kiếm..."
+                  style="padding:6px;border:1px solid #ccc;border-radius:4px;">
+                <select id="catalog-status" style="padding:6px;border:1px solid #ccc;border-radius:4px;">
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="true">Đang hoạt động</option>
+                  <option value="false">Đã vô hiệu hóa</option>
+                </select>
+              </div>
+              <button id="btn-add-catalog" class="btn btn-primary">+ Thêm mới</button>
+            </div>
+            <table class="table" style="width:100%">
+              <thead id="catalog-table-head"></thead>
+              <tbody id="catalog-table-body"></tbody>
+            </table>
+            <div id="catalog-pagination" style="margin-top:12px; display:flex; justify-content:center; gap:8px;"></div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ── MODALS ────────────────────────────────────────────────── -->
+  <!-- ── MODALS ────────────────────────────────────────────────── -->
 
-<!-- View Proposal Modal -->
-<div id="modal-view" class="modal-overlay" style="display:none">
-  <div class="modal" style="width:720px">
-    <h3 id="modal-view-title"></h3>
-    <div id="modal-view-body"></div>
-    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('modal-view')">Đóng</button></div>
-  </div>
-</div>
-
-<!-- Return Proposal Modal -->
-<div id="modal-return" class="modal-overlay" style="display:none">
-  <div class="modal">
-    <h3>Trả về đề tài</h3>
-    <div class="form-group">
-      <label for="return-reason">Lý do trả về (tối thiểu 10 ký tự):</label>
-      <textarea id="return-reason" rows="4"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-return')">Hủy</button>
-      <button id="btn-confirm-return" class="btn btn-warning">Trả về</button>
+  <!-- View Proposal Modal -->
+  <div id="modal-view" class="modal-overlay" style="display:none">
+    <div class="modal" style="width:720px">
+      <h3 id="modal-view-title"></h3>
+      <div id="modal-view-body"></div>
+      <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('modal-view')">Đóng</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Reject Proposal Modal -->
-<div id="modal-reject" class="modal-overlay" style="display:none">
-  <div class="modal">
-    <h3>Từ chối đề tài</h3>
-    <div class="form-group">
-      <label for="reject-reason">Lý do từ chối (tối thiểu 20 ký tự):</label>
-      <textarea id="reject-reason" rows="4"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-reject')">Hủy</button>
-      <button id="btn-confirm-reject" class="btn btn-danger">Từ chối</button>
-    </div>
-  </div>
-</div>
-
-<!-- Submit Review Modal -->
-<div id="modal-submit-review" class="modal-overlay" style="display:none">
-  <div class="modal">
-    <h3>Nộp đánh giá phản biện</h3>
-    <div id="criteria-form-container" style="margin-bottom:12px; border:1px solid #e5e7eb; padding:10px; border-radius:6px; max-height:300px; overflow-y:auto; display:none">
-      <p style="font-weight:600; font-size:13px; margin-bottom:8px">Chi tiết tiêu chí:</p>
-      <div id="criteria-inputs"></div>
-    </div>
-    <div class="form-group"><label for="review-score">Tổng điểm (0-100):</label><input type="number" id="review-score" min="0" max="100" step="0.5" readonly style="background:#f9fafb"></div>
-    <div class="form-group"><label for="review-verdict">Kết luận:</label>
-      <select id="review-verdict">
-        <option value="PASS">Đạt</option>
-        <option value="FAIL">Không đạt</option>
-        <option value="NEEDS_REVISION">Cần chỉnh sửa</option>
-      </select>
-    </div>
-    <div class="form-group"><label for="review-comments">Nhận xét (tối thiểu 50 ký tự):</label><textarea id="review-comments" rows="5"></textarea></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-submit-review')">Hủy</button>
-      <button id="btn-confirm-review" class="btn btn-primary">Nộp đánh giá</button>
-    </div>
-  </div>
-</div>
-
-<!-- Progress Review Modal (STAFF) -->
-<div id="modal-progress-review" class="modal-overlay" style="display:none">
-  <div class="modal" style="width:600px">
-    <h3>📋 Xem xét báo cáo tiến độ</h3>
-    <div id="modal-progress-review-body" style="max-height:400px;overflow-y:auto;margin-bottom:16px;"></div>
-    <input type="hidden" id="progress-review-id">
-    <div class="form-group">
-      <label for="progress-review-status">Kết luận *</label>
-      <select id="progress-review-status">
-        <option value="ACCEPTED">✅ Chấp nhận — Tiến độ đúng hạn</option>
-        <option value="NEEDS_REVISION">📝 Yêu cầu bổ sung</option>
-        <option value="DELAYED">⚠️ Đánh dấu chậm tiến độ</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="progress-review-note">Ghi chú</label>
-      <textarea id="progress-review-note" rows="3" placeholder="Nhận xét của Phòng KHCN..."></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-progress-review')">Hủy</button>
-      <button id="btn-confirm-progress-review" class="btn btn-primary">Xác nhận</button>
-    </div>
-  </div>
-</div>
-
-<!-- Acceptance Review Modal -->
-<div id="modal-acc-review" class="modal-overlay" style="display:none">
-  <div class="modal">
-    <h3>Nộp đánh giá nghiệm thu</h3>
-    <div class="form-group"><label for="acc-score">Điểm (0-100):</label><input type="number" id="acc-score" min="0" max="100" step="0.5"></div>
-    <div class="form-group"><label for="acc-verdict">Kết luận:</label>
-      <select id="acc-verdict">
-        <option value="PASS">Đạt</option>
-        <option value="FAIL">Không đạt</option>
-      </select>
-    </div>
-    <div class="form-group"><label for="acc-comments">Nhận xét:</label><textarea id="acc-comments" rows="4"></textarea></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-acc-review')">Hủy</button>
-      <button id="btn-confirm-acc-review" class="btn btn-primary">Nộp</button>
-    </div>
-  </div>
-</div>
-
-<!-- Create Period Modal -->
-<div id="modal-period" class="modal-overlay" style="display:none">
-  <div class="modal">
-    <h3>Tạo đợt đăng ký mới</h3>
-    <form id="form-period">
-      <div class="form-group"><label for="period-title">Tiêu đề *</label><input id="period-title" name="title" required></div>
-      <div class="form-group"><label for="period-desc">Mô tả</label><textarea id="period-desc" name="description" rows="2"></textarea></div>
-      <div class="form-row">
-        <div class="form-group"><label for="period-start">Ngày bắt đầu *</label><input id="period-start" name="start_date" type="date" required></div>
-        <div class="form-group"><label for="period-end">Ngày kết thúc *</label><input id="period-end" name="end_date" type="date" required></div>
+  <!-- Return Proposal Modal -->
+  <div id="modal-return" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h3>Trả về đề tài</h3>
+      <div class="form-group">
+        <label for="return-reason">Lý do trả về (tối thiểu 10 ký tự):</label>
+        <textarea id="return-reason" rows="4"></textarea>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-period')">Hủy</button>
-        <button type="submit" class="btn btn-primary">Tạo</button>
+        <button class="btn btn-secondary" onclick="closeModal('modal-return')">Hủy</button>
+        <button id="btn-confirm-return" class="btn btn-warning">Trả về</button>
       </div>
-    </form>
+    </div>
   </div>
-</div>
 
-<!-- Create User Modal -->
-<div id="modal-user" class="modal-overlay" style="display:none">
-  <div class="modal">
-    <h3>Thêm người dùng mới</h3>
-    <form id="form-user">
-      <div class="form-row">
-        <div class="form-group"><label for="user-fullname">Họ tên *</label><input id="user-fullname" name="full_name" required></div>
-        <div class="form-group"><label for="user-email">Email *</label><input id="user-email" name="email" type="email" required></div>
+  <!-- Reject Proposal Modal -->
+  <div id="modal-reject" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h3>Từ chối đề tài</h3>
+      <div class="form-group">
+        <label for="reject-reason">Lý do từ chối (tối thiểu 20 ký tự):</label>
+        <textarea id="reject-reason" rows="4"></textarea>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label for="user-password">Mật khẩu *</label><input id="user-password" name="password" type="password" value="password123"></div>
-        <div class="form-group"><label for="user-role-sel">Vai trò *</label>
-          <select id="user-role-sel" name="role">
-            <option value="FACULTY">Giảng viên</option>
-            <option value="STAFF">Phòng KHCN</option>
-            <option value="LEADERSHIP">Lãnh đạo</option>
-            <option value="REVIEWER">Phản biện</option>
-            <option value="ADMIN">Admin</option>
-          </select>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-reject')">Hủy</button>
+        <button id="btn-confirm-reject" class="btn btn-danger">Từ chối</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit Review Modal -->
+  <div id="modal-submit-review" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h3>Nộp đánh giá phản biện</h3>
+      <div id="criteria-form-container"
+        style="margin-bottom:12px; border:1px solid #e5e7eb; padding:10px; border-radius:6px; max-height:300px; overflow-y:auto; display:none">
+        <p style="font-weight:600; font-size:13px; margin-bottom:8px">Chi tiết tiêu chí:</p>
+        <div id="criteria-inputs"></div>
+      </div>
+      <div class="form-group"><label for="review-score">Tổng điểm (0-100):</label><input type="number" id="review-score"
+          min="0" max="100" step="0.5" readonly style="background:#f9fafb"></div>
+      <div class="form-group"><label for="review-verdict">Kết luận:</label>
+        <select id="review-verdict">
+          <option value="PASS">Đạt</option>
+          <option value="FAIL">Không đạt</option>
+          <option value="NEEDS_REVISION">Cần chỉnh sửa</option>
+        </select>
+      </div>
+      <div class="form-group"><label for="review-comments">Nhận xét (tối thiểu 50 ký tự):</label><textarea
+          id="review-comments" rows="5"></textarea></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-submit-review')">Hủy</button>
+        <button id="btn-confirm-review" class="btn btn-primary">Nộp đánh giá</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress Review Modal (STAFF) -->
+  <div id="modal-progress-review" class="modal-overlay" style="display:none">
+    <div class="modal" style="width:600px">
+      <h3>📋 Xem xét báo cáo tiến độ</h3>
+      <div id="modal-progress-review-body" style="max-height:400px;overflow-y:auto;margin-bottom:16px;"></div>
+      <input type="hidden" id="progress-review-id">
+      <div class="form-group">
+        <label for="progress-review-status">Kết luận *</label>
+        <select id="progress-review-status">
+          <option value="ACCEPTED">✅ Chấp nhận — Tiến độ đúng hạn</option>
+          <option value="NEEDS_REVISION">📝 Yêu cầu bổ sung</option>
+          <option value="DELAYED">⚠️ Đánh dấu chậm tiến độ</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="progress-review-note">Ghi chú</label>
+        <textarea id="progress-review-note" rows="3" placeholder="Nhận xét của Phòng KHCN..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-progress-review')">Hủy</button>
+        <button id="btn-confirm-progress-review" class="btn btn-primary">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Acceptance Review Modal -->
+  <div id="modal-acc-review" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h3>Nộp đánh giá nghiệm thu</h3>
+      <div class="form-group"><label for="acc-score">Điểm (0-100):</label><input type="number" id="acc-score" min="0"
+          max="100" step="0.5"></div>
+      <div class="form-group"><label for="acc-verdict">Kết luận:</label>
+        <select id="acc-verdict">
+          <option value="PASS">Đạt</option>
+          <option value="FAIL">Không đạt</option>
+        </select>
+      </div>
+      <div class="form-group"><label for="acc-comments">Nhận xét:</label><textarea id="acc-comments"
+          rows="4"></textarea></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-acc-review')">Hủy</button>
+        <button id="btn-confirm-acc-review" class="btn btn-primary">Nộp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Finalize Acceptance Modal -->
+  <div id="modal-acc-finalize" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h3>Xác nhận kết quả nghiệm thu</h3>
+      <div class="form-group">
+        <label for="acc-finalize-verdict">Kết luận *</label>
+        <select id="acc-finalize-verdict">
+          <option value="excellent">🏆 Xuất sắc</option>
+          <option value="good">🥇 Tốt</option>
+          <option value="pass">✅ Đạt</option>
+          <option value="fail">❌ Không đạt</option>
+          <option value="revise_required">📝 Cần bổ sung / Sửa đổi</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="acc-finalize-note">Nhận xét / Ghi chú</label>
+        <textarea id="acc-finalize-note" rows="4"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-acc-finalize')">Hủy</button>
+        <button id="btn-confirm-acc-finalize" class="btn btn-primary">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Period Modal -->
+  <div id="modal-period" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h3>Tạo đợt đăng ký mới</h3>
+      <form id="form-period">
+        <div class="form-group"><label for="period-title">Tiêu đề *</label><input id="period-title" name="title"
+            required></div>
+        <div class="form-group"><label for="period-desc">Mô tả</label><textarea id="period-desc" name="description"
+            rows="2"></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label for="period-start">Ngày bắt đầu *</label><input id="period-start"
+              name="start_date" type="date" required></div>
+          <div class="form-group"><label for="period-end">Ngày kết thúc *</label><input id="period-end" name="end_date"
+              type="date" required></div>
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label for="user-rank">Học hàm</label><input id="user-rank" name="academic_rank" placeholder="VD: Phó Giáo sư"></div>
-        <div class="form-group"><label for="user-title">Học vị</label><input id="user-title" name="academic_title" placeholder="VD: Tiến sĩ"></div>
-      </div>
-      <div class="form-group"><label for="user-dept">Khoa/Phòng</label><select id="user-dept" name="department_id"></select></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-user')">Hủy</button>
-        <button type="submit" class="btn btn-primary">Tạo</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Reusable Catalog form modal -->
-<div id="modal-catalog" class="modal-overlay" style="display:none">
-  <div class="modal">
-    <h3 id="modal-catalog-title">Tạo mới</h3>
-    <form id="form-catalog">
-      <div id="modal-catalog-body">
-        <!-- Render inputs via JS -->
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-catalog')">Hủy</button>
-        <button type="submit" class="btn btn-primary">Lưu</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Council Manage Modal -->
-<div id="modal-council-manage" class="modal-overlay" style="display:none">
-  <div class="modal">
-    <h3 id="modal-council-title">Quản lý hội đồng</h3>
-    <input type="hidden" id="council-proposal-id">
-    <p style="margin-bottom:12px;color:#64748b;font-size:13px">Chọn phản biện (tối thiểu 2):</p>
-    <div id="council-reviewer-list" style="max-height:260px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;padding:8px"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-council-manage')">Hủy</button>
-      <button id="btn-create-council-members" class="btn btn-primary">Tiếp tục</button>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-period')">Hủy</button>
+          <button type="submit" class="btn btn-primary">Tạo</button>
+        </div>
+      </form>
     </div>
   </div>
-</div>
 
-<script>window.API_BASE = 'http://localhost:8000/api';</script>
-<script src="js/api.js"></script>
-<script src="js/app.js"></script>
+  <!-- Create User Modal -->
+  <div id="modal-user" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h3>Thêm người dùng mới</h3>
+      <form id="form-user">
+        <div class="form-row">
+          <div class="form-group"><label for="user-fullname">Họ tên *</label><input id="user-fullname" name="full_name"
+              required></div>
+          <div class="form-group"><label for="user-email">Email *</label><input id="user-email" name="email"
+              type="email" required></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label for="user-password">Mật khẩu *</label><input id="user-password" name="password"
+              type="password" value="password123"></div>
+          <div class="form-group"><label for="user-role-sel">Vai trò *</label>
+            <select id="user-role-sel" name="role">
+              <option value="FACULTY">Giảng viên</option>
+              <option value="STAFF">Phòng KHCN</option>
+              <option value="LEADERSHIP">Lãnh đạo</option>
+              <option value="REVIEWER">Phản biện</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label for="user-rank">Học hàm</label><input id="user-rank" name="academic_rank"
+              placeholder="VD: Phó Giáo sư"></div>
+          <div class="form-group"><label for="user-title">Học vị</label><input id="user-title" name="academic_title"
+              placeholder="VD: Tiến sĩ"></div>
+        </div>
+        <div class="form-group"><label for="user-dept">Khoa/Phòng</label><select id="user-dept"
+            name="department_id"></select></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-user')">Hủy</button>
+          <button type="submit" class="btn btn-primary">Tạo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reusable Catalog form modal -->
+  <div id="modal-catalog" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h3 id="modal-catalog-title">Tạo mới</h3>
+      <form id="form-catalog">
+        <div id="modal-catalog-body">
+          <!-- Render inputs via JS -->
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-catalog')">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Council Manage Modal -->
+  <div id="modal-council-manage" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h3 id="modal-council-title">Quản lý hội đồng</h3>
+      <input type="hidden" id="council-proposal-id">
+      <p style="margin-bottom:12px;color:#64748b;font-size:13px">Chọn phản biện (tối thiểu 2):</p>
+      <div id="council-reviewer-list"
+        style="max-height:260px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;padding:8px"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-council-manage')">Hủy</button>
+        <button id="btn-create-council-members" class="btn btn-primary">Tiếp tục</button>
+      </div>
+    </div>
+  </div>
+
+  <script>window.API_BASE = 'http://localhost:8000/api';</script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
 </body>
+
 </html>
