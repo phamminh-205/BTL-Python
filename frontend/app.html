@@ -4,22 +4,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SciRes PTIT Dashboard — Quản lý Nghiên cứu Khoa học">
   <title>SciRes — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
   <div id="app">
+    <!-- Mobile Overlay -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
     <!-- Sidebar -->
     <div id="sidebar">
-      <div class="app-title">🔬 SciRes</div>
-      <div class="user-info" style="position:relative">
+      <div class="sidebar-top">
+        <div class="app-title">SciRes PTIT</div>
+        <button id="sidebar-close" class="sidebar-close" onclick="toggleSidebar()" aria-label="Đóng menu">✕</button>
+      </div>
+      <div class="user-info">
         <div id="user-name">...</div>
-        <div id="user-role" style="font-size:11px;color:#64748b"></div>
-        <div id="notif-bell" style="position:absolute; top:12px; right:15px; cursor:pointer">
+        <div id="user-role"></div>
+        <div id="notif-bell">
           <span>🔔</span>
-          <span id="notif-count"
-            style="position:absolute; top:-8px; right:-8px; background:#ef4444; color:white; font-size:10px; padding:1px 4px; border-radius:10px; display:none">0</span>
+          <span id="notif-count">0</span>
         </div>
       </div>
       <nav id="nav"></nav>
@@ -28,12 +37,20 @@
 
     <!-- Main Content -->
     <div id="content">
+      <!-- Mobile Header -->
+      <div id="mobile-header">
+        <button id="hamburger-btn" onclick="toggleSidebar()" aria-label="Mở menu">
+          <span></span><span></span><span></span>
+        </button>
+        <span class="mobile-title">SciRes PTIT</span>
+      </div>
+
       <!-- Dashboard -->
       <div id="page-dashboard" class="active page"></div>
 
       <!-- Edit Proposal Modal (instead of full page to keep context simple) -->
       <div id="modal-edit-proposal" class="modal-overlay" style="display:none">
-        <div class="modal" style="width:680px">
+        <div class="modal modal-lg">
           <h3>Sửa đề xuất (Bản nháp)</h3>
           <div id="msg-edit-proposal"></div>
           <form id="edit-proposal-form">
@@ -70,43 +87,42 @@
       </div>
 
       <!-- Faculty pages -->
-      <div id="page-my-proposals" class="page" style="display:none"></div>
-      <div id="page-create-proposal" class="page" style="display:none"></div>
-      <div id="page-progress" class="page" style="display:none"></div>
-      <div id="page-acceptance" class="page" style="display:none"></div>
+      <div id="page-my-proposals" class="page"></div>
+      <div id="page-create-proposal" class="page"></div>
+      <div id="page-progress" class="page"></div>
+      <div id="page-acceptance" class="page"></div>
 
       <!-- Staff pages -->
-      <div id="page-validate" class="page" style="display:none"></div>
-      <div id="page-periods" class="page" style="display:none"></div>
-      <div id="page-councils" class="page" style="display:none"></div>
-      <div id="page-acceptance-staff" class="page" style="display:none"></div>
-      <div id="page-progress-staff" class="page" style="display:none"></div>
+      <div id="page-validate" class="page"></div>
+      <div id="page-periods" class="page"></div>
+      <div id="page-councils" class="page"></div>
+      <div id="page-acceptance-staff" class="page"></div>
+      <div id="page-progress-staff" class="page"></div>
 
       <!-- Leadership pages -->
-      <div id="page-approve" class="page" style="display:none"></div>
-      <div id="page-accept-confirm" class="page" style="display:none"></div>
-      <div id="page-monitor" class="page" style="display:none"></div>
+      <div id="page-approve" class="page"></div>
+      <div id="page-accept-confirm" class="page"></div>
+      <div id="page-monitor" class="page"></div>
 
       <!-- Reviewer pages -->
-      <div id="page-my-reviews" class="page" style="display:none"></div>
-      <div id="page-my-acceptance" class="page" style="display:none"></div>
+      <div id="page-my-reviews" class="page"></div>
+      <div id="page-my-acceptance" class="page"></div>
 
       <!-- Admin pages -->
-      <div id="page-users" class="page" style="display:none"></div>
-      <div id="page-catalog" class="page" style="display:none">
-        <div style="display:flex; gap:20px;">
-          <div style="width:250px;">
+      <div id="page-users" class="page"></div>
+      <div id="page-catalog" class="page">
+        <div class="catalog-layout">
+          <div class="catalog-sidebar">
             <h3>Quản lý danh mục</h3>
-            <ul id="catalog-nav" style="list-style:none; padding:0;">
+            <ul id="catalog-nav" class="catalog-nav">
               <!-- Render via JS -->
             </ul>
           </div>
-          <div style="flex:1;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-              <div style="display:flex; gap:10px;">
-                <input type="text" id="catalog-search" placeholder="Tìm kiếm..."
-                  style="padding:6px;border:1px solid #ccc;border-radius:4px;">
-                <select id="catalog-status" style="padding:6px;border:1px solid #ccc;border-radius:4px;">
+          <div class="catalog-main">
+            <div class="catalog-toolbar">
+              <div class="catalog-filters">
+                <input type="text" id="catalog-search" placeholder="Tìm kiếm...">
+                <select id="catalog-status">
                   <option value="">Tất cả trạng thái</option>
                   <option value="true">Đang hoạt động</option>
                   <option value="false">Đã vô hiệu hóa</option>
@@ -114,11 +130,11 @@
               </div>
               <button id="btn-add-catalog" class="btn btn-primary">+ Thêm mới</button>
             </div>
-            <table class="table" style="width:100%">
+            <table class="table">
               <thead id="catalog-table-head"></thead>
               <tbody id="catalog-table-body"></tbody>
             </table>
-            <div id="catalog-pagination" style="margin-top:12px; display:flex; justify-content:center; gap:8px;"></div>
+            <div id="catalog-pagination"></div>
           </div>
         </div>
       </div>
@@ -129,7 +145,7 @@
 
   <!-- View Proposal Modal -->
   <div id="modal-view" class="modal-overlay" style="display:none">
-    <div class="modal" style="width:720px">
+    <div class="modal modal-xl">
       <h3 id="modal-view-title"></h3>
       <div id="modal-view-body"></div>
       <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('modal-view')">Đóng</button>
@@ -171,13 +187,12 @@
   <div id="modal-submit-review" class="modal-overlay" style="display:none">
     <div class="modal">
       <h3>Nộp đánh giá phản biện</h3>
-      <div id="criteria-form-container"
-        style="margin-bottom:12px; border:1px solid #e5e7eb; padding:10px; border-radius:6px; max-height:300px; overflow-y:auto; display:none">
-        <p style="font-weight:600; font-size:13px; margin-bottom:8px">Chi tiết tiêu chí:</p>
+      <div id="criteria-form-container" class="criteria-box" style="display:none">
+        <p class="criteria-title">Chi tiết tiêu chí:</p>
         <div id="criteria-inputs"></div>
       </div>
       <div class="form-group"><label for="review-score">Tổng điểm (0-100):</label><input type="number" id="review-score"
-          min="0" max="100" step="0.5" readonly style="background:#f9fafb"></div>
+          min="0" max="100" step="0.5" readonly class="readonly-field"></div>
       <div class="form-group"><label for="review-verdict">Kết luận:</label>
         <select id="review-verdict">
           <option value="PASS">Đạt</option>
@@ -196,9 +211,9 @@
 
   <!-- Progress Review Modal (STAFF) -->
   <div id="modal-progress-review" class="modal-overlay" style="display:none">
-    <div class="modal" style="width:600px">
+    <div class="modal modal-md">
       <h3>📋 Xem xét báo cáo tiến độ</h3>
-      <div id="modal-progress-review-body" style="max-height:400px;overflow-y:auto;margin-bottom:16px;"></div>
+      <div id="modal-progress-review-body" class="scroll-panel mb-3"></div>
       <input type="hidden" id="progress-review-id">
       <div class="form-group">
         <label for="progress-review-status">Kết luận *</label>
@@ -236,6 +251,21 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('modal-acc-review')">Hủy</button>
         <button id="btn-confirm-acc-review" class="btn btn-primary">Nộp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Return Acceptance Dossier Modal -->
+  <div id="modal-acc-return" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h3>Trả về hồ sơ nghiệm thu</h3>
+      <div class="form-group">
+        <label for="acc-return-reason">Lý do trả về (tối thiểu 10 ký tự):</label>
+        <textarea id="acc-return-reason" rows="4"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-acc-return')">Hủy</button>
+        <button id="btn-confirm-acc-return" class="btn btn-warning">Trả về</button>
       </div>
     </div>
   </div>
@@ -349,9 +379,8 @@
     <div class="modal">
       <h3 id="modal-council-title">Quản lý hội đồng</h3>
       <input type="hidden" id="council-proposal-id">
-      <p style="margin-bottom:12px;color:#64748b;font-size:13px">Chọn phản biện (tối thiểu 2):</p>
-      <div id="council-reviewer-list"
-        style="max-height:260px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;padding:8px"></div>
+      <p class="text-muted text-small mb-3">Chọn phản biện (tối thiểu 2):</p>
+      <div id="council-reviewer-list" class="reviewer-list"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('modal-council-manage')">Hủy</button>
         <button id="btn-create-council-members" class="btn btn-primary">Tiếp tục</button>
@@ -362,6 +391,14 @@
   <script>window.API_BASE = 'http://localhost:8000/api';</script>
   <script src="js/api.js"></script>
   <script src="js/app.js"></script>
+  <script>
+    // Mobile sidebar toggle
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebar-overlay').classList.toggle('open');
+      document.body.classList.toggle('sidebar-open');
+    }
+  </script>
 </body>
 
 </html>

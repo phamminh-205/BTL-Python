@@ -15,10 +15,73 @@ let _monitorPage = 1;
 let _myReviewPage = 1;
 const PAGE_SIZE = 10;
 
+const UI_COLORS = {
+  primary: '#b91c1c',
+  primaryDark: '#991b1b',
+  primaryLight: '#fee2e2',
+  accent: '#facc15',
+  text: '#1f2937',
+  muted: '#64748b',
+  soft: '#94a3b8',
+  border: '#e5e7eb',
+  surface: '#f8fafc',
+  success: '#16a34a',
+  warning: '#d97706',
+  danger: '#dc2626',
+  info: '#475569',
+};
+
+const STATUS_COLOR = {
+  DRAFT: UI_COLORS.muted,
+  SUBMITTED: UI_COLORS.primary,
+  VALIDATED: UI_COLORS.primaryDark,
+  UNDER_REVIEW: UI_COLORS.info,
+  REVIEWED: UI_COLORS.warning,
+  APPROVED: UI_COLORS.success,
+  ACCEPTED: UI_COLORS.success,
+  IN_PROGRESS: UI_COLORS.success,
+  REJECTED: UI_COLORS.danger,
+  FAILED: UI_COLORS.danger,
+  ACCEPTANCE_FAILED: UI_COLORS.danger,
+  REVISION_REQUESTED: UI_COLORS.warning,
+  ACCEPTANCE_REVISION_REQUESTED: UI_COLORS.warning,
+  ACCEPTANCE_SUBMITTED: UI_COLORS.primary,
+  UNDER_ACCEPTANCE_REVIEW: UI_COLORS.info,
+  SUBMITTED_PROGRESS: UI_COLORS.info,
+  NEEDS_REVISION: UI_COLORS.warning,
+  DELAYED: UI_COLORS.danger,
+};
+
+const VERDICT_COLOR = {
+  excellent: UI_COLORS.success,
+  good: UI_COLORS.primary,
+  pass: UI_COLORS.success,
+  fail: UI_COLORS.danger,
+  revise_required: UI_COLORS.warning,
+};
+
+function getStatusColor(status) {
+  return STATUS_COLOR[status] || UI_COLORS.info;
+}
+
+function getProgressColor(status) {
+  return { SUBMITTED: UI_COLORS.info, ACCEPTED: UI_COLORS.success, NEEDS_REVISION: UI_COLORS.warning, DELAYED: UI_COLORS.danger }[status] || UI_COLORS.info;
+}
+
+function renderStatCard(value, label, icon, tone = 'primary', extraClass = '') {
+  return `<div class="card stat-card stat-card-${tone} ${extraClass}">
+    <div class="stat-icon">${icon}</div>
+    <div class="stat-content">
+      <div class="stat-value">${value}</div>
+      <div class="stat-label">${label}</div>
+    </div>
+  </div>`;
+}
+
 function renderPagination(totalItems, currentPage, onPageChange) {
   const totalPages = Math.ceil(totalItems / PAGE_SIZE);
   if (totalPages <= 1) return '';
-  let html = '<div class="pagination" style="display:flex;justify-content:center;gap:8px;margin-top:16px">';
+  let html = '<div class="pagination">';
   for (let i = 1; i <= totalPages; i++) {
     html += `<button class="btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-secondary'}" onclick="${onPageChange}(${i})">${i}</button>`;
   }
@@ -148,24 +211,27 @@ registerPage('dashboard', async () => {
       const overdue = (prog.items || []).filter(i => i.is_overdue);
       const upcoming = (prog.items || []).filter(i => !i.is_overdue && i.next_deadline);
       extraHtml = `
-        <h4 style="margin-top:20px">📊 Thống kê đề tài</h4>
-        <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['DRAFT'] || 0}</h3><p>Bản nháp</p></div>
-          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['SUBMITTED'] || 0}</h3><p>Đã nộp</p></div>
-          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['REVISION_REQUESTED'] || 0}</h3><p>Cần sửa</p></div>
-          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['APPROVED'] || 0}</h3><p>Đã duyệt</p></div>
-          <div class="card" style="flex:1;min-width:110px;text-align:center;background:${s['IN_PROGRESS'] > 0 ? '#f0fdf4' : ''}">
-            <h3>${s['IN_PROGRESS'] || 0}</h3><p>Đang thực hiện</p></div>
+        <h4 class="section-title">📊 Thống kê đề tài</h4>
+        <div class="stats-grid">
+          ${renderStatCard(s['DRAFT'] || 0, 'Bản nháp', 'BN', 'info')}
+          ${renderStatCard(s['SUBMITTED'] || 0, 'Đã nộp', 'N', 'primary')}
+          ${renderStatCard(s['REVISION_REQUESTED'] || 0, 'Cần sửa', 'CS', 'warning')}
+          ${renderStatCard(s['APPROVED'] || 0, 'Đã duyệt', 'D', 'success')}
+          ${renderStatCard(s['IN_PROGRESS'] || 0, 'Đang thực hiện', 'TH', 'success', s['IN_PROGRESS'] > 0 ? 'surface-success' : '')}
         </div>
         ${overdue.length ? `
-          <div class="card" style="margin-top:16px;border-left:4px solid #ef4444;background:#fef2f2">
-            <h4 style="color:#ef4444">⚠️ Cảnh báo: ${overdue.length} đề tài chậm tiến độ</h4>
-            ${overdue.map(i => `<p style="font-size:13px">• <b>${i.proposal_title}</b> — ${i.latest_completion_pct}% hoàn thành</p>`).join('')}
+          <div class="card alert-card accent-left-danger mt-3">
+            <h4>⚠️ Cảnh báo: ${overdue.length} đề tài chậm tiến độ</h4>
+            <div class="metric-list">
+              ${overdue.map(i => `<div class="metric-list-item"><b>${i.proposal_title}</b><span>${i.latest_completion_pct}% hoàn thành</span></div>`).join('')}
+            </div>
           </div>` : ''}
         ${upcoming.length ? `
-          <div class="card" style="margin-top:12px;border-left:4px solid #3b82f6">
-            <h4 style="color:#3b82f6">📅 Deadline báo cáo tiến độ sắp tới</h4>
-            ${upcoming.map(i => `<p style="font-size:13px">• <b>${i.proposal_title}</b> — Hạn: ${fmtDate(i.next_deadline)}</p>`).join('')}
+          <div class="card deadline-card accent-left mt-3">
+            <h4>📅 Deadline báo cáo tiến độ sắp tới</h4>
+            <div class="metric-list">
+              ${upcoming.map(i => `<div class="metric-list-item"><b>${i.proposal_title}</b><span>Hạn: ${fmtDate(i.next_deadline)}</span></div>`).join('')}
+            </div>
           </div>` : ''}`;
     } catch (e) { console.error('Dashboard error', e); }
   }
@@ -180,41 +246,32 @@ registerPage('dashboard', async () => {
       if (prog) {
         const sb = prog.status_breakdown || {};
         extraHtml += `
-          <h4 style="margin-top:20px">📊 Tổng quan tiến độ đề tài</h4>
-          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-            <div class="card" style="flex:1;min-width:130px;text-align:center">
-              <h3 style="color:#3b82f6">${prog.total_in_progress}</h3><p>Đang thực hiện</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center">
-              <h3 style="color:#8b5cf6">${prog.total_approved_not_started}</h3><p>Đã duyệt (chưa bắt đầu)</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:${prog.total_overdue_reports > 0 ? '#fef2f2' : ''}">
-              <h3 style="color:#ef4444">${prog.total_overdue_reports}</h3><p>Báo cáo quá hạn</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:${prog.pending_review_count > 0 ? '#fffbeb' : ''}">
-              <h3 style="color:#f59e0b">${prog.pending_review_count}</h3><p>Chờ review</p></div>
+          <h4 class="section-title">📊 Tổng quan tiến độ đề tài</h4>
+          <div class="stats-grid">
+            ${renderStatCard(prog.total_in_progress, 'Đang thực hiện', 'TH', 'success')}
+            ${renderStatCard(prog.total_approved_not_started, 'Đã duyệt (chưa bắt đầu)', 'D', 'primary')}
+            ${renderStatCard(prog.total_overdue_reports, 'Báo cáo quá hạn', 'QH', 'danger', prog.total_overdue_reports > 0 ? 'surface-danger' : '')}
+            ${renderStatCard(prog.pending_review_count, 'Chờ review', 'RV', 'warning', prog.pending_review_count > 0 ? 'surface-warning' : '')}
           </div>
-          <h4 style="margin-top:16px">Phân loại trạng thái báo cáo</h4>
-          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
-            <div class="card" style="flex:1;min-width:100px;text-align:center"><h3>${sb.SUBMITTED || 0}</h3><p>Đã nộp</p></div>
-            <div class="card" style="flex:1;min-width:100px;text-align:center;background:#f0fdf4"><h3 style="color:#16a34a">${sb.ACCEPTED || 0}</h3><p>Chấp nhận</p></div>
-            <div class="card" style="flex:1;min-width:100px;text-align:center;background:#fffbeb"><h3 style="color:#d97706">${sb.NEEDS_REVISION || 0}</h3><p>Cần bổ sung</p></div>
-            <div class="card" style="flex:1;min-width:100px;text-align:center;background:#fef2f2"><h3 style="color:#dc2626">${sb.DELAYED || 0}</h3><p>Chậm tiến độ</p></div>
+          <h4 class="section-title">Phân loại trạng thái báo cáo</h4>
+          <div class="stats-grid">
+            ${renderStatCard(sb.SUBMITTED || 0, 'Đã nộp', 'N', 'info')}
+            ${renderStatCard(sb.ACCEPTED || 0, 'Chấp nhận', 'OK', 'success', 'surface-success')}
+            ${renderStatCard(sb.NEEDS_REVISION || 0, 'Cần bổ sung', 'BS', 'warning', 'surface-warning')}
+            ${renderStatCard(sb.DELAYED || 0, 'Chậm tiến độ', 'CT', 'danger', 'surface-danger')}
           </div>`;
       }
       
       if (acc) {
         const byS = acc.by_status || {};
         extraHtml += `
-          <h4 style="margin-top:20px">🎓 Thống kê Nghiệm thu</h4>
-          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:#eff6ff">
-              <h3 style="color:#2563eb">${acc.total || 0}</h3><p>Tổng hồ sơ</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center">
-              <h3 style="color:#3b82f6">${acc.pending_submission || 0}</h3><p>Chờ KHCN duyệt</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:${acc.under_review > 0 ? '#f5f3ff' : ''}">
-              <h3 style="color:#8b5cf6">${acc.under_review || 0}</h3><p>Đang phản biện</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:${byS.REVIEWED > 0 ? '#fffbeb' : ''}">
-              <h3 style="color:#d97706">${byS.REVIEWED || 0}</h3><p>Chờ LĐ xác nhận</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:#f0fdf4">
-              <h3 style="color:#16a34a">${acc.finalized || 0}</h3><p>Đã chốt kết quả</p></div>
+          <h4 class="section-title">🎓 Thống kê Nghiệm thu</h4>
+          <div class="stats-grid">
+            ${renderStatCard(acc.total || 0, 'Tổng hồ sơ', 'HS', 'info', 'surface-info')}
+            ${renderStatCard(acc.pending_submission || 0, 'Chờ KHCN duyệt', 'KD', 'primary')}
+            ${renderStatCard(acc.under_review || 0, 'Đang phản biện', 'PB', 'info', acc.under_review > 0 ? 'surface-info' : '')}
+            ${renderStatCard(byS.REVIEWED || 0, 'Chờ LĐ xác nhận', 'LD', 'warning', byS.REVIEWED > 0 ? 'surface-warning' : '')}
+            ${renderStatCard(acc.finalized || 0, 'Đã chốt kết quả', 'CK', 'success', 'surface-success')}
           </div>`;
       }
     } catch (e) { console.error('Staff dashboard error', e); }
@@ -283,39 +340,39 @@ async function viewProposal(id) {
 
     let reviewHtml = '';
     if (reviews && reviews.length) {
-      reviewHtml = `<h4 style="margin:20px 0 10px">📊 Đánh giá từ hội đồng phản biện</h4>
+      reviewHtml = `<h4 class="section-title">📊 Đánh giá từ hội đồng phản biện</h4>
         ${reviews.map(r => `
-          <div class="card" style="margin-bottom:12px; border-left:4px solid #3b82f6">
-            <div style="display:flex; justify-content:space-between; align-items:center">
-              <span style="font-weight:600">${r.reviewer_name || 'Phản biện'}</span>
+          <div class="card review-card">
+            <div class="review-head">
+              <span class="strong">${r.reviewer_name || 'Phản biện'}</span>
               <span class="badge ${r.verdict === 'PASS' ? 'badge-success' : (r.verdict === 'FAIL' ? 'badge-danger' : 'badge-warning')}">${r.verdict}</span>
             </div>
-            <p style="font-size:18px; font-weight:700; color:#2563eb; margin:8px 0">${r.score} điểm</p>
+            <p class="review-score">${r.score} điểm</p>
             ${r.criteria_scores ? `
-              <div style="font-size:12px; background:#f8fafc; padding:8px; border-radius:4px; margin-bottom:8px">
-                ${r.criteria_scores.map(cs => `<div style="display:flex; justify-content:space-between"><span>Tiêu chí ${cs.id}:</span> <span>${cs.score}</span></div>`).join('')}
+              <div class="info-box text-small mb-2">
+                ${r.criteria_scores.map(cs => `<div class="split-row"><span>Tiêu chí ${cs.id}:</span> <span>${cs.score}</span></div>`).join('')}
               </div>` : ''}
-            <p style="font-style:italic; color:#475569; font-size:13px">"${r.comments}"</p>
+            <p class="italic body-small text-muted">"${r.comments}"</p>
           </div>
         `).join('')}`;
     }
 
     const timelineHtml = history.map((h, i) => `
-      <div class="timeline-item" style="display:flex; gap:12px; margin-bottom:12px; position:relative">
-        <div style="width:12px; height:12px; border-radius:50%; background:#3b82f6; margin-top:4px; z-index:1"></div>
-        ${i < history.length - 1 ? '<div style="position:absolute; left:5px; top:16px; bottom:-12px; width:2px; background:#e5e7eb"></div>' : ''}
-        <div style="flex:1">
-          <div style="display:flex; justify-content:space-between; font-size:13px">
-            <span style="font-weight:600; color:#1e293b">${h.to_status}</span>
-            <span style="color:#64748b">${fmtDate(h.changed_at)}</span>
+      <div class="timeline-item-simple">
+        <div class="timeline-dot-simple"></div>
+        ${i < history.length - 1 ? '<div class="timeline-line-simple"></div>' : ''}
+        <div class="timeline-content w-full">
+          <div class="split-row body-small">
+            <span class="strong">${h.to_status}</span>
+            <span class="text-muted">${fmtDate(h.changed_at)}</span>
           </div>
-          <div style="color:#475569; font-size:12px">${h.action} ${h.note ? `— <span style="color:#ef4444">${h.note}</span>` : ''}</div>
+          <div class="text-muted text-small">${h.action} ${h.note ? `— <span class="badge badge-danger">${h.note}</span>` : ''}</div>
         </div>
       </div>
     `).join('');
 
     document.getElementById('modal-view-body').innerHTML = `
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px">
+      <div class="detail-grid">
         <div>
           <p><b>Trạng thái:</b> ${badge(p.status)}</p>
           <p><b>PI:</b> ${p.pi_name}</p>
@@ -323,14 +380,14 @@ async function viewProposal(id) {
           <p><b>Loại:</b> ${p.category_name || '—'}</p>
           <p><b>Thời gian:</b> ${p.duration_months || '—'} tháng</p>
           <p><b>Tài liệu:</b> ${p.attachment_url ? `<a href="${p.attachment_url}" target="_blank">🔗 Xem hồ sơ</a>` : '—'}</p>
-          <div style="margin-top:12px; padding:10px; background:#f1f5f9; border-radius:6px">
-            <p style="font-weight:600; font-size:13px; margin-bottom:4px">Tóm tắt:</p>
-            <p style="font-size:13px; color:#334155">${p.summary || 'Chưa có tóm tắt.'}</p>
+          <div class="info-box mt-3">
+            <p class="strong body-small mb-2">Tóm tắt:</p>
+            <p class="body-small">${p.summary || 'Chưa có tóm tắt.'}</p>
           </div>
         </div>
         <div>
-          <h4 style="margin-bottom:12px">🕒 Lịch sử phê duyệt</h4>
-          <div style="padding-left:4px">${timelineHtml}</div>
+          <h4 class="mb-3">🕒 Lịch sử phê duyệt</h4>
+          <div>${timelineHtml}</div>
         </div>
       </div>
       ${reviewHtml}
@@ -379,7 +436,7 @@ registerPage('create-proposal', async () => {
         <div class="form-group"><label>Mục tiêu</label><textarea name="objectives" rows="3"></textarea></div>
         <div class="form-group"><label>Phương pháp</label><textarea name="methodology" rows="3"></textarea></div>
         <div class="form-group"><label>Kết quả dự kiến</label><textarea name="expected_outcomes" rows="2"></textarea></div>
-        <div style="display:flex;gap:8px;margin-top:12px">
+        <div class="action-row mt-3">
           <button type="submit" name="action" value="draft" class="btn btn-secondary">💾 Lưu bản nháp</button>
           <button type="submit" name="action" value="submit" class="btn btn-primary">📤 Nộp ngay</button>
         </div>
@@ -499,7 +556,7 @@ registerPage('progress', async () => {
           ${allProposals.map(p => `<option value="${p.id}">[${p.status}] ${p.title}</option>`).join('')}
         </select>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div class="action-row mb-3">
         <button id="tab-reports" class="btn btn-primary btn-sm" onclick="switchProgressTab('reports')">📋 Danh sách báo cáo</button>
         <button id="tab-submit" class="btn btn-secondary btn-sm" onclick="switchProgressTab('submit')">➕ Nộp báo cáo mới</button>
         <button id="tab-timeline" class="btn btn-secondary btn-sm" onclick="switchProgressTab('timeline')">🕒 Timeline dự án</button>
@@ -597,23 +654,22 @@ async function loadProgressReports() {
     const reports = await API.get(`/progress/proposals/${pid}`);
     if (!reports.length) { listEl.innerHTML = '<p class="empty">Chưa có báo cáo nào.</p>'; return; }
 
-    const statusColor = { SUBMITTED: '#6b7280', ACCEPTED: '#16a34a', NEEDS_REVISION: '#d97706', DELAYED: '#dc2626' };
     const statusLabel = { SUBMITTED: 'Đã nộp', ACCEPTED: 'Chấp nhận', NEEDS_REVISION: 'Cần bổ sung', DELAYED: 'Chậm tiến độ' };
 
     listEl.innerHTML = reports.map(r => `
-      <div class="card" style="margin-bottom:12px;border-left:4px solid ${statusColor[r.status] || '#ccc'}">
-        <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="card dynamic-accent" style="--item-color:${getProgressColor(r.status)}">
+        <div class="split-row">
           <div>
-            <span style="font-weight:600">Báo cáo #${r.report_order}</span>
-            ${r.report_period ? `<span style="color:#64748b;margin-left:8px">${r.report_period}</span>` : ''}
-            ${r.is_overdue ? '<span style="background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:11px;margin-left:8px">⚠️ Quá hạn</span>' : ''}
+            <span class="strong">Báo cáo #${r.report_order}</span>
+            ${r.report_period ? `<span class="text-muted mt-1">${r.report_period}</span>` : ''}
+            ${r.is_overdue ? '<span class="badge badge-danger">⚠️ Quá hạn</span>' : ''}
           </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <span style="font-weight:700;font-size:18px;color:${statusColor[r.status] || '#333'}">${r.completion_pct}%</span>
-            <span class="badge" style="background:${statusColor[r.status] || '#ccc'}20;color:${statusColor[r.status] || '#333'};border:1px solid ${statusColor[r.status] || '#ccc'}">${statusLabel[r.status] || r.status}</span>
+          <div class="inline-actions">
+            <span class="metric-value" style="color:${getProgressColor(r.status)}">${r.completion_pct}%</span>
+            <span class="badge" style="color:${getProgressColor(r.status)};border-color:${getProgressColor(r.status)}">${statusLabel[r.status] || r.status}</span>
           </div>
         </div>
-        <div style="margin-top:8px;font-size:13px;color:#374151">
+        <div class="body-small mt-2">
           <p><b>Công việc đã hoàn thành:</b> ${r.content}</p>
           ${r.products_created ? `<p><b>Sản phẩm:</b> ${r.products_created}</p>` : ''}
           ${r.issues ? `<p><b>Khó khăn:</b> ${r.issues}</p>` : ''}
@@ -621,11 +677,11 @@ async function loadProgressReports() {
           ${r.attachment_url ? `<p><b>Minh chứng:</b> <a href="${r.attachment_url}" target="_blank">🔗 Xem tài liệu</a></p>` : ''}
         </div>
         ${r.review_note ? `
-          <div style="margin-top:8px;padding:8px;background:#f8fafc;border-radius:4px;font-size:12px">
+          <div class="info-box text-small mt-2">
             <b>Nhận xét Phòng KHCN:</b> ${r.review_note}
-            ${r.reviewed_at ? `<span style="color:#94a3b8;margin-left:8px">(${fmtDate(r.reviewed_at)})</span>` : ''}
+            ${r.reviewed_at ? `<span class="text-muted">(${fmtDate(r.reviewed_at)})</span>` : ''}
           </div>` : ''}
-        <div style="font-size:12px;color:#94a3b8;margin-top:6px">Nộp: ${fmtDate(r.submitted_at)}</div>
+        <div class="text-muted text-small mt-2">Nộp: ${fmtDate(r.submitted_at)}</div>
       </div>`).join('');
   } catch (e) { listEl.innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
 }
@@ -639,15 +695,15 @@ async function loadProgressTimeline(pid) {
 
     // Progress bar
     let html = `
-      <div style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-weight:600">${tl.proposal_title}</span>
-          <span style="color:#3b82f6;font-weight:700">${latestPct}% hoàn thành</span>
+      <div class="mb-3">
+        <div class="split-row mb-2">
+          <span class="strong">${tl.proposal_title}</span>
+          <span class="strong" style="color:${latestPct >= 100 ? UI_COLORS.success : latestPct >= 50 ? UI_COLORS.primary : UI_COLORS.warning}">${latestPct}% hoàn thành</span>
         </div>
-        <div style="background:#e5e7eb;border-radius:99px;height:12px;overflow:hidden">
-          <div style="background:${latestPct >= 100 ? '#16a34a' : latestPct >= 50 ? '#3b82f6' : '#f59e0b'};height:100%;width:${latestPct}%;transition:width 0.5s;border-radius:99px"></div>
+        <div class="progress-track">
+          <div class="progress-fill" style="--progress-value:${latestPct}%;--progress-color:${latestPct >= 100 ? UI_COLORS.success : latestPct >= 50 ? UI_COLORS.primary : UI_COLORS.warning}"></div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-top:4px">
+        <div class="split-row text-muted text-small mt-1">
           <span>PI: ${tl.pi_name || '—'}</span>
           <span>Thời gian: ${tl.duration_months || '—'} tháng</span>
           <span>Báo cáo: ${tl.total_reports} kỳ</span>
@@ -660,33 +716,33 @@ async function loadProgressTimeline(pid) {
     (tl.progress_reports || []).forEach(r => events.push({ ...r, _type: 'report', _date: r.submitted_at }));
     events.sort((a, b) => new Date(a._date) - new Date(b._date));
 
-    html += '<div style="position:relative;padding-left:24px">';
+    html += '<div class="timeline">';
     events.forEach((ev, i) => {
       const isLast = i === events.length - 1;
       if (ev._type === 'status') {
         html += `
-          <div style="position:relative;margin-bottom:16px">
-            <div style="position:absolute;left:-20px;top:2px;width:12px;height:12px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 2px #3b82f6"></div>
-            ${!isLast ? '<div style="position:absolute;left:-15px;top:14px;bottom:-16px;width:2px;background:#e5e7eb"></div>' : ''}
-            <div style="font-size:13px">
-              <span style="font-weight:600;color:#1e293b">${ev.to_status}</span>
-              <span style="color:#94a3b8;margin-left:8px;font-size:12px">${fmtDate(ev._date)}</span>
-              <div style="color:#64748b;font-size:12px">${ev.action}${ev.note ? ` — <span style="color:#ef4444">${ev.note}</span>` : ''}</div>
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            ${!isLast ? '<div class="timeline-line"></div>' : ''}
+            <div class="timeline-content">
+              <span class="strong">${ev.to_status}</span>
+              <span class="text-muted text-small">${fmtDate(ev._date)}</span>
+              <div class="text-muted text-small">${ev.action}${ev.note ? ` — <span class="badge badge-danger">${ev.note}</span>` : ''}</div>
             </div>
           </div>`;
       } else {
-        const sc = { SUBMITTED: '#6b7280', ACCEPTED: '#16a34a', NEEDS_REVISION: '#d97706', DELAYED: '#dc2626' };
+        const color = getProgressColor(ev.status);
         html += `
-          <div style="position:relative;margin-bottom:16px">
-            <div style="position:absolute;left:-20px;top:2px;width:12px;height:12px;border-radius:50%;background:${sc[ev.status] || '#ccc'};border:2px solid #fff;box-shadow:0 0 0 2px ${sc[ev.status] || '#ccc'}"></div>
-            ${!isLast ? '<div style="position:absolute;left:-15px;top:14px;bottom:-16px;width:2px;background:#e5e7eb"></div>' : ''}
-            <div style="font-size:13px;background:#f8fafc;padding:8px;border-radius:6px">
-              <div style="display:flex;justify-content:space-between">
-                <span style="font-weight:600">📊 Báo cáo kỳ #${ev.report_order}${ev.report_period ? ` — ${ev.report_period}` : ''}</span>
-                <span style="font-weight:700;color:${sc[ev.status] || '#333'}">${ev.completion_pct}%</span>
+          <div class="timeline-item">
+            <div class="timeline-dot" style="--timeline-color:${color}"></div>
+            ${!isLast ? '<div class="timeline-line"></div>' : ''}
+            <div class="timeline-card">
+              <div class="split-row">
+                <span class="strong">📊 Báo cáo kỳ #${ev.report_order}${ev.report_period ? ` — ${ev.report_period}` : ''}</span>
+                <span class="strong" style="color:${color}">${ev.completion_pct}%</span>
               </div>
-              <div style="color:#64748b;font-size:12px;margin-top:2px">${fmtDate(ev._date)}
-                ${ev.is_overdue ? '<span style="color:#dc2626;margin-left:8px">⚠️ Quá hạn</span>' : ''}
+              <div class="text-muted text-small mt-1">${fmtDate(ev._date)}
+                ${ev.is_overdue ? '<span class="badge badge-danger">⚠️ Quá hạn</span>' : ''}
               </div>
             </div>
           </div>`;
@@ -705,7 +761,7 @@ registerPage('acceptance', async () => {
   const el = document.getElementById('page-acceptance');
   el.innerHTML = `
     <div class="section-header"><h2>✅ Nghiệm thu đề tài</h2>
-      <div style="display:flex;gap:8px">
+      <div class="section-actions">
         <button class="btn btn-primary" id="acc-tab-btn-list" onclick="switchAccTab('list')">📋 Danh sách hồ sơ</button>
         <button class="btn btn-secondary" id="acc-tab-btn-new" onclick="switchAccTab('new')">➕ Tạo hồ sơ mới</button>
       </div></div>
@@ -728,31 +784,29 @@ async function loadAcceptanceList() {
   try {
     const data = await API.get('/acceptance/my');
     if (!data.items || !data.items.length) { el.innerHTML = '<p class="empty">Chưa có hồ sơ nghiệm thu. Hãy tạo hồ sơ mới.</p>'; return; }
-    const sColor = { DRAFT: '#94a3b8', SUBMITTED: '#3b82f6', UNDER_REVIEW: '#8b5cf6', REVIEWED: '#f59e0b', ACCEPTED: '#16a34a', FAILED: '#dc2626', REVISION_REQUESTED: '#d97706' };
     const vLabel = { excellent: '🏆 Xuất sắc', good: '🥇 Tốt', pass: '✅ Đạt', fail: '❌ Không đạt', revise_required: '📝 Cần bổ sung' };
-    const vColor = { excellent: '#16a34a', good: '#3b82f6', pass: '#8b5cf6', fail: '#dc2626', revise_required: '#d97706' };
     el.innerHTML = data.items.map(d => `
-      <div class="card" style="margin-bottom:14px;border-left:4px solid ${sColor[d.status] || '#ccc'}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+      <div class="card dynamic-accent" style="--item-color:${getStatusColor(d.status)}">
+        <div class="split-row">
           <div>
-            <div style="font-weight:700;font-size:15px">${d.proposal_title || d.proposal_id}</div>
-            <div style="margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <span class="badge" style="background:${sColor[d.status] || '#ccc'}20;color:${sColor[d.status] || '#333'};border:1px solid ${sColor[d.status] || '#ccc'}">${d.status}</span>
-              ${d.final_verdict ? `<span style="background:${vColor[d.final_verdict] || '#ccc'}20;color:${vColor[d.final_verdict]};padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid ${vColor[d.final_verdict] || '#ccc'}">${vLabel[d.final_verdict] || d.final_verdict}</span>` : ''}
-              ${d.revision_reason ? `<span style="color:#d97706;font-size:12px">⚠️ ${d.revision_reason}</span>` : ''}
+            <div class="strong">${d.proposal_title || d.proposal_id}</div>
+            <div class="inline-actions mt-1">
+              ${badge(d.status)}
+              ${d.final_verdict ? `<span class="badge" style="color:${VERDICT_COLOR[d.final_verdict] || UI_COLORS.info};border-color:${VERDICT_COLOR[d.final_verdict] || UI_COLORS.info}">${vLabel[d.final_verdict] || d.final_verdict}</span>` : ''}
+              ${d.revision_reason ? `<span class="badge badge-warning">⚠️ ${d.revision_reason}</span>` : ''}
             </div>
           </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <div class="inline-actions">
             <button class="btn btn-sm btn-secondary" onclick="viewAccDossier('${d.id}')">🔍 Chi tiết</button>
             ${(d.status === 'DRAFT' || d.status === 'REVISION_REQUESTED') ? `
               <button class="btn btn-sm btn-warning" onclick="editAccDossier('${d.id}')">✏️ Sửa</button>
               <button class="btn btn-sm btn-primary" onclick="submitAccDossier('${d.id}')">📤 Nộp</button>` : ''}
           </div>
         </div>
-        <div style="margin-top:8px;font-size:13px;color:#475569">
+        <div class="body-small text-muted mt-2">
           <b>Báo cáo:</b> ${d.final_report.substring(0, 120)}${d.final_report.length > 120 ? '...' : ''}
         </div>
-        <div style="font-size:12px;color:#94a3b8;margin-top:4px">
+        <div class="text-muted text-small mt-1">
           Tạo: ${fmtDate(d.created_at)}${d.submitted_at ? ` | Nộp: ${fmtDate(d.submitted_at)}` : ''}${d.finalized_at ? ` | Kết quả: ${fmtDate(d.finalized_at)}` : ''}        </div>
       </div>`).join('');
   } catch (e) { el.innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
@@ -771,7 +825,7 @@ async function renderAcceptanceNewForm() {
     window._accPubIds = [];
     el.innerHTML = `
       <div class="card">
-        <h3 style="margin-bottom:16px">📝 Tạo hồ sơ nghiệm thu mới</h3>
+        <h3>📝 Tạo hồ sơ nghiệm thu mới</h3>
         <div class="form-group"><label for="acc-sel-proposal">Chọn đề tài *</label>
           <select id="acc-sel-proposal" onchange="loadAccLinkedPubs()">
             <option value="">— Chọn đề tài —</option>
@@ -785,11 +839,11 @@ async function renderAcceptanceNewForm() {
           <div class="form-group"><label>Tự đánh giá</label><textarea id="acc-self" rows="2" placeholder="Tự đánh giá mức độ hoàn thành mục tiêu..."></textarea></div>
           <div class="form-group"><label>Giải trình hoàn thành so với mục tiêu ban đầu</label><textarea id="acc-explain" rows="3" placeholder="Giải trình điểm chưa đạt (nếu có)..."></textarea></div>
           <div class="form-group"><label>Publication liên kết</label>
-            <div id="acc-pub-list" style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;min-height:40px;font-size:13px;color:#64748b">Chọn đề tài để xem...</div></div>
+            <div id="acc-pub-list" class="info-box body-small text-muted">Chọn đề tài để xem...</div></div>
           <div class="form-group"><label>Minh chứng (nhập URL rồi Enter)</label>
-            <input id="acc-attachment" placeholder="https://..." style="width:100%">
-            <div id="acc-att-tags" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"></div></div>
-          <div style="display:flex;gap:8px;margin-top:16px">
+            <input id="acc-attachment" placeholder="https://...">
+            <div id="acc-att-tags" class="tag-list"></div></div>
+          <div class="action-row mt-3">
             <button type="button" class="btn btn-secondary" onclick="saveAccDraft()">💾 Lưu nháp</button>
             <button type="button" class="btn btn-primary" onclick="saveAndSubmitAcc()">📤 Lưu &amp; Nộp</button>
           </div>
@@ -809,8 +863,8 @@ async function renderAcceptanceNewForm() {
 
 function renderAccAttTags() {
   document.getElementById('acc-att-tags').innerHTML = (window._accAttachments || []).map((a, i) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;padding:3px 8px;border-radius:99px;font-size:12px">🔗 ${a.name}
-      <button onclick="window._accAttachments.splice(${i},1);renderAccAttTags()" style="background:none;border:none;cursor:pointer;color:#dc2626">×</button></span>`).join('');
+    `<span class="chip">🔗 ${a.name}
+      <button onclick="window._accAttachments.splice(${i},1);renderAccAttTags()">×</button></span>`).join('');
 }
 
 async function loadAccLinkedPubs() {
@@ -820,12 +874,12 @@ async function loadAccLinkedPubs() {
   window._accPubIds = [];
   try {
     const pubs = await API.get(`/acceptance/proposals/${pid}/publications`).catch(() => []);
-    if (!pubs.length) { el.innerHTML = '<span style="color:#94a3b8">Chưa có publication nào.</span>'; return; }
+    if (!pubs.length) { el.innerHTML = '<span class="text-muted">Chưa có publication nào.</span>'; return; }
     el.innerHTML = pubs.map(p =>
-      `<label style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #f3f4f6;font-size:13px">
+      `<label class="check-row">
         <input type="checkbox" class="acc-pub-cb" value="${p.id}" onchange="updateAccPubIds()">
-        <span><b>${p.title}</b> — ${p.journal_name || ''} <span style="color:#8b5cf6">[${p.pub_type}]</span></span></label>`).join('');
-  } catch (e) { el.innerHTML = `<span style="color:#dc2626">${e.message}</span>`; }
+        <span><b>${p.title}</b> — ${p.journal_name || ''} <span class="badge badge-submitted">${p.pub_type}</span></span></label>`).join('');
+  } catch (e) { el.innerHTML = `<span class="badge badge-danger">${e.message}</span>`; }
 }
 
 function updateAccPubIds() {
@@ -907,40 +961,38 @@ async function viewAccDossier(dossierId) {
   try {
     const d = await API.get(`/acceptance/${dossierId}`);
     const vLabel = { excellent: '🏆 Xuất sắc', good: '🥇 Tốt', pass: '✅ Đạt', fail: '❌ Không đạt', revise_required: '📝 Cần bổ sung' };
-    const vColor = { excellent: '#16a34a', good: '#3b82f6', pass: '#8b5cf6', fail: '#dc2626', revise_required: '#d97706' };
-    const sColor = { DRAFT: '#94a3b8', SUBMITTED: '#3b82f6', UNDER_REVIEW: '#8b5cf6', REVIEWED: '#f59e0b', ACCEPTED: '#16a34a', FAILED: '#dc2626', REVISION_REQUESTED: '#d97706' };
     const histHtml = (d.status_history || []).map((h, i, arr) => `
-      <div style="display:flex;gap:10px;margin-bottom:10px;position:relative">
-        <div style="width:10px;height:10px;border-radius:50%;background:#3b82f6;margin-top:3px;flex-shrink:0"></div>
-        ${i < arr.length - 1 ? '<div style="position:absolute;left:4px;top:13px;bottom:-10px;width:2px;background:#e5e7eb"></div>' : ''}
-        <div style="flex:1">
-          <div style="display:flex;justify-content:space-between;font-size:12px">
-            <span style="font-weight:600">${h.from_status || '—'} → ${h.to_status}</span>
-            <span style="color:#64748b">${fmtDate(h.changed_at)}</span>
+      <div class="timeline-item-simple">
+        <div class="timeline-dot-simple"></div>
+        ${i < arr.length - 1 ? '<div class="timeline-line-simple"></div>' : ''}
+        <div class="timeline-content w-full">
+          <div class="split-row text-small">
+            <span class="strong">${h.from_status || '—'} → ${h.to_status}</span>
+            <span class="text-muted">${fmtDate(h.changed_at)}</span>
           </div>
-          <div style="color:#64748b;font-size:11px">${h.action}${h.note ? ` — <span style="color:#ef4444">${h.note}</span>` : ''}</div>
+          <div class="text-muted text-small">${h.action}${h.note ? ` — <span class="badge badge-danger">${h.note}</span>` : ''}</div>
         </div>
       </div>`).join('');
     document.getElementById('modal-view-title').textContent = `Hồ sơ NT: ${d.proposal_title || d.proposal_id}`;
     document.getElementById('modal-view-body').innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="detail-grid">
         <div>
-          <p><b>Trạng thái:</b> <span style="color:${sColor[d.status] || '#333'};font-weight:600">${d.status}</span></p>
-          ${d.final_verdict ? `<div style="padding:10px;background:${vColor[d.final_verdict]}15;border:1px solid ${vColor[d.final_verdict]};border-radius:8px;margin:8px 0">
-            <b>Kết quả:</b> <span style="font-size:16px;font-weight:700;color:${vColor[d.final_verdict]}">${vLabel[d.final_verdict]}</span>
-            ${d.finalize_note ? `<p style="font-size:12px;margin-top:4px">${d.finalize_note}</p>` : ''}</div>` : ''}
-          ${d.revision_reason ? `<div style="padding:8px;background:#fef2f2;border-left:3px solid #ef4444;border-radius:4px;font-size:13px;margin-bottom:8px"><b>Lý do trả về:</b> ${d.revision_reason}</div>` : ''}
-          <div style="font-size:13px;margin-top:8px"><b>Báo cáo tổng kết:</b>
-            <div style="background:#f8fafc;padding:8px;border-radius:4px;max-height:100px;overflow-y:auto;margin-top:4px">${d.final_report}</div></div>
-          <div style="font-size:13px;margin-top:8px"><b>Sản phẩm đạt được:</b>
-            <div style="background:#f8fafc;padding:8px;border-radius:4px;margin-top:4px">${d.achievements}</div></div>
-          ${d.impact_summary ? `<div style="font-size:13px;margin-top:6px"><b>Ứng dụng:</b> ${d.impact_summary}</div>` : ''}
-          ${d.self_assessment ? `<div style="font-size:13px;margin-top:6px"><b>Tự đánh giá:</b> ${d.self_assessment}</div>` : ''}
-          ${(d.attachments_metadata || []).length ? `<div style="margin-top:8px"><b style="font-size:13px">📎 Minh chứng:</b> ${d.attachments_metadata.map(a => `<a href="${a.url}" target="_blank" style="font-size:12px;display:block;color:#3b82f6">🔗 ${a.name}</a>`).join('')}</div>` : ''}
+          <p><b>Trạng thái:</b> ${badge(d.status)}</p>
+          ${d.final_verdict ? `<div class="info-box mt-2" style="border-color:${VERDICT_COLOR[d.final_verdict] || UI_COLORS.info}">
+            <b>Kết quả:</b> <span class="strong" style="color:${VERDICT_COLOR[d.final_verdict] || UI_COLORS.info}">${vLabel[d.final_verdict]}</span>
+            ${d.finalize_note ? `<p class="text-small mt-1">${d.finalize_note}</p>` : ''}</div>` : ''}
+          ${d.revision_reason ? `<div class="info-box card-danger accent-left-danger body-small mb-2"><b>Lý do trả về:</b> ${d.revision_reason}</div>` : ''}
+          <div class="body-small mt-2"><b>Báo cáo tổng kết:</b>
+            <div class="text-box">${d.final_report}</div></div>
+          <div class="body-small mt-2"><b>Sản phẩm đạt được:</b>
+            <div class="text-box">${d.achievements}</div></div>
+          ${d.impact_summary ? `<div class="body-small mt-2"><b>Ứng dụng:</b> ${d.impact_summary}</div>` : ''}
+          ${d.self_assessment ? `<div class="body-small mt-2"><b>Tự đánh giá:</b> ${d.self_assessment}</div>` : ''}
+          ${(d.attachments_metadata || []).length ? `<div class="mt-2"><b class="body-small">📎 Minh chứng:</b> ${d.attachments_metadata.map(a => `<a href="${a.url}" target="_blank" class="text-small">🔗 ${a.name}</a>`).join('')}</div>` : ''}
         </div>
         <div>
-          <h4 style="margin-bottom:12px">🕒 Lịch sử hồ sơ</h4>
-          <div style="padding-left:4px">${histHtml || '<p style="color:#94a3b8;font-size:13px">Chưa có lịch sử.</p>'}</div>
+          <h4 class="mb-3">🕒 Lịch sử hồ sơ</h4>
+          <div>${histHtml || '<p class="text-muted body-small">Chưa có lịch sử.</p>'}</div>
         </div>
       </div>`;
     openModal('modal-view');
@@ -1137,7 +1189,7 @@ async function loadCouncils() {
         </td>
       </tr>`).join('');
 
-    el.innerHTML = `<div class="card" style="margin-top:16px">
+    el.innerHTML = `<div class="card mt-3">
       <table><thead><tr><th>Tên hội đồng</th><th>Đề tài</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`;
   } catch (e) { document.getElementById('councils-list').innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
@@ -1170,7 +1222,7 @@ async function manageCouncil(councilId) {
 
     const currentMemberIds = c.members.map(m => m.user_id);
     document.getElementById('council-reviewer-list').innerHTML = reviewers.items.map(r => `
-      <label style="display:block;padding:4px;border-bottom:1px solid #f3f4f6">
+      <label class="reviewer-option">
         <input type="checkbox" value="${r.id}" ${currentMemberIds.includes(r.id) ? 'checked' : ''}> 
         ${r.full_name} (${r.academic_rank || ''} ${r.academic_title || ''})
       </label>
@@ -1223,9 +1275,9 @@ registerPage('acceptance-staff', async () => {
   el.innerHTML = `
     <div class="section-header"><h2>📋 Quản lý Nghiệm thu — Phòng KHCN</h2></div>
     <div id="msg-acc-staff"></div>
-    <div class="card" style="margin-bottom:12px">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <span style="font-weight:600;color:#374151">Lọc:</span>
+    <div class="card filter-panel">
+      <div class="filter-row">
+        <span class="filter-label">Lọc:</span>
         ${['', 'SUBMITTED', 'UNDER_REVIEW', 'REVIEWED', 'ACCEPTED', 'FAILED', 'REVISION_REQUESTED'].map(s =>
     `<button class="btn btn-sm ${s === '' ? 'btn-primary' : 'btn-secondary'}" id="accf-${s || 'ALL'}" onclick="filterAccStaff('${s}')">
             ${s === '' ? 'Tất cả' : s}</button>`).join('')}
@@ -1251,16 +1303,15 @@ async function loadAccStaff() {
     if (_accStaffStatus) url += `&status=${_accStaffStatus}`;
     const data = await API.get(url);
     if (!data.items || !data.items.length) { el.innerHTML = '<p class="empty">Không có hồ sơ nghiệm thu.</p>'; return; }
-    const sColor = { DRAFT: '#94a3b8', SUBMITTED: '#3b82f6', UNDER_REVIEW: '#8b5cf6', REVIEWED: '#f59e0b', ACCEPTED: '#16a34a', FAILED: '#dc2626', REVISION_REQUESTED: '#d97706' };
     const vLabel = { excellent: '🏆 Xuất sắc', good: '🥇 Tốt', pass: '✅ Đạt', fail: '❌ Không đạt', revise_required: '📝 Cần bổ sung' };
     el.innerHTML = `<table><thead><tr>
       <th>Đề tài</th><th>Giảng viên</th><th>Trạng thái</th><th>Kết quả</th><th>Nộp lúc</th><th>Thao tác</th>
     </tr></thead><tbody>
     ${data.items.map(d => `<tr>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.proposal_title || ''}">${d.proposal_title || d.proposal_id}</td>
+      <td class="cell-truncate" title="${d.proposal_title || ''}">${d.proposal_title || d.proposal_id}</td>
       <td>${d.submitted_by_name || '—'}</td>
-      <td><span style="color:${sColor[d.status] || '#333'};font-weight:600;font-size:12px">${d.status}</span></td>
-      <td>${d.final_verdict ? `<span style="font-size:12px">${vLabel[d.final_verdict] || d.final_verdict}</span>` : '—'}</td>
+      <td>${badge(d.status)}</td>
+      <td>${d.final_verdict ? `<span class="text-small">${vLabel[d.final_verdict] || d.final_verdict}</span>` : '—'}</td>
       <td>${fmtDateShort(d.submitted_at || d.created_at)}</td>
       <td>
         <button class="btn btn-sm btn-secondary" onclick="viewAccDossierStaff('${d.id}')">🔍 Xem</button>
@@ -1295,38 +1346,37 @@ async function viewAccDossierStaff(dossierId) {
   try {
     const d = await API.get(`/acceptance/${dossierId}`);
     const reviews = await API.get(`/acceptance/${dossierId}/reviews`).catch(() => []);
-    const sColor = { DRAFT: '#94a3b8', SUBMITTED: '#3b82f6', UNDER_REVIEW: '#8b5cf6', REVIEWED: '#f59e0b', ACCEPTED: '#16a34a', FAILED: '#dc2626', REVISION_REQUESTED: '#d97706' };
     const avgScore = reviews.length ? (reviews.reduce((s, r) => s + parseFloat(r.score || 0), 0) / reviews.length).toFixed(1) : null;
     const revHtml = reviews.length ? reviews.map(r => `
-      <div style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px;font-size:13px">
-        <div style="display:flex;justify-content:space-between"><b>${r.reviewer_name || '—'}</b>
-          <span style="font-weight:700;color:${r.verdict === 'PASS' ? '#16a34a' : r.verdict === 'FAIL' ? '#dc2626' : '#d97706'}">${r.verdict || '—'} | ${r.score || '—'}đ</span></div>
-        ${r.comments ? `<p style="color:#475569;font-style:italic;margin-top:4px">"${r.comments}"</p>` : ''}
-        <div style="color:#94a3b8;font-size:11px">${fmtDate(r.reviewed_at)}</div>
-      </div>`).join('') : '<p style="color:#94a3b8;font-size:13px">Chưa có đánh giá.</p>';
+      <div class="info-box body-small mb-2">
+        <div class="split-row"><b>${r.reviewer_name || '—'}</b>
+          <span class="strong" style="color:${r.verdict === 'PASS' ? UI_COLORS.success : r.verdict === 'FAIL' ? UI_COLORS.danger : UI_COLORS.warning}">${r.verdict || '—'} | ${r.score || '—'}đ</span></div>
+        ${r.comments ? `<p class="text-muted italic mt-1">"${r.comments}"</p>` : ''}
+        <div class="text-muted text-small">${fmtDate(r.reviewed_at)}</div>
+      </div>`).join('') : '<p class="text-muted body-small">Chưa có đánh giá.</p>';
     document.getElementById('modal-view-title').textContent = `Hồ sơ NT: ${d.proposal_title || d.proposal_id}`;
     document.getElementById('modal-view-body').innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="detail-grid">
         <div>
-          <p><b>Trạng thái:</b> <span style="color:${sColor[d.status] || '#333'};font-weight:600">${d.status}</span></p>
+          <p><b>Trạng thái:</b> ${badge(d.status)}</p>
           <p><b>Giảng viên:</b> ${d.submitted_by_name || '—'}</p>
           <p><b>Nộp lúc:</b> ${fmtDate(d.submitted_at)}</p>
-          ${d.revision_reason ? `<div style="padding:8px;background:#fef2f2;border-left:3px solid #ef4444;border-radius:4px;font-size:13px;margin:8px 0"><b>Lý do trả về:</b> ${d.revision_reason}</div>` : ''}
-          <div style="font-size:13px;margin-top:8px"><b>Báo cáo tổng kết:</b>
-            <div style="background:#f8fafc;padding:8px;border-radius:4px;max-height:120px;overflow-y:auto;margin-top:4px">${d.final_report}</div></div>
-          <div style="font-size:13px;margin-top:8px"><b>Sản phẩm đạt được:</b>
-            <div style="background:#f8fafc;padding:8px;border-radius:4px;margin-top:4px">${d.achievements}</div></div>
-          ${d.deliverables ? `<div style="font-size:13px;margin-top:6px"><b>Sản phẩm cụ thể:</b> ${d.deliverables}</div>` : ''}
-          ${d.impact_summary ? `<div style="font-size:13px;margin-top:6px"><b>Ứng dụng/Tác động:</b> ${d.impact_summary}</div>` : ''}
-          ${d.completion_explanation ? `<div style="font-size:13px;margin-top:6px"><b>Giải trình:</b> ${d.completion_explanation}</div>` : ''}
+          ${d.revision_reason ? `<div class="info-box card-danger accent-left-danger body-small mt-2"><b>Lý do trả về:</b> ${d.revision_reason}</div>` : ''}
+          <div class="body-small mt-2"><b>Báo cáo tổng kết:</b>
+            <div class="text-box">${d.final_report}</div></div>
+          <div class="body-small mt-2"><b>Sản phẩm đạt được:</b>
+            <div class="text-box">${d.achievements}</div></div>
+          ${d.deliverables ? `<div class="body-small mt-2"><b>Sản phẩm cụ thể:</b> ${d.deliverables}</div>` : ''}
+          ${d.impact_summary ? `<div class="body-small mt-2"><b>Ứng dụng/Tác động:</b> ${d.impact_summary}</div>` : ''}
+          ${d.completion_explanation ? `<div class="body-small mt-2"><b>Giải trình:</b> ${d.completion_explanation}</div>` : ''}
         </div>
         <div>
-          ${avgScore ? `<div style="padding:10px;background:#f0fdf4;border-radius:8px;text-align:center;margin-bottom:12px">
-            <div style="font-size:28px;font-weight:700;color:#16a34a">${avgScore}</div>
-            <div style="font-size:13px;color:#374151">Điểm TB (${reviews.length} reviewer)</div></div>` : ''}
-          <h4 style="margin-bottom:8px">Đánh giá hội đồng:</h4>
+          ${avgScore ? `<div class="card surface-success text-center mb-3">
+            <div class="stat-value">${avgScore}</div>
+            <div class="body-small">Điểm TB (${reviews.length} reviewer)</div></div>` : ''}
+          <h4 class="mb-2">Đánh giá hội đồng:</h4>
           ${revHtml}
-          ${d.status === 'SUBMITTED' ? `<div style="margin-top:16px;display:flex;gap:8px">
+          ${d.status === 'SUBMITTED' ? `<div class="action-row mt-3">
             <button class="btn btn-success" onclick="validateAccDossier('${d.id}','APPROVE');closeModal('modal-view')">✓ Chấp nhận hồ sơ</button>
             <button class="btn btn-warning" onclick="closeModal('modal-view');openAccReturnModal('${d.id}')">↩ Trả về</button></div>` : ''}
         </div>
@@ -1439,13 +1489,11 @@ async function loadAcceptConfirmList() {
     const items = (data.items || []).filter(d => ['UNDER_REVIEW', 'REVIEWED'].includes(d.status));
     
     if (!items.length) { el.innerHTML = '<p class="empty">Không có hồ sơ chờ xác nhận.</p>'; return; }
-    const sColor = { UNDER_REVIEW: '#8b5cf6', REVIEWED: '#f59e0b' };
-
     el.innerHTML = `<table><thead><tr><th>Đề tài</th><th>Giảng viên</th><th>Trạng thái</th><th>Nộp lúc</th><th>Thao tác</th></tr></thead>
     <tbody>${items.map(d => `<tr>
-      <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.proposal_title || d.proposal_id}">${d.proposal_title || d.proposal_id}</td>
+      <td class="cell-truncate" title="${d.proposal_title || d.proposal_id}">${d.proposal_title || d.proposal_id}</td>
       <td>${d.submitted_by_name || '—'}</td>
-      <td><span style="color:${sColor[d.status] || '#333'};font-weight:600;font-size:12px">${d.status}</span></td>
+      <td>${badge(d.status)}</td>
       <td>${fmtDateShort(d.submitted_at || d.created_at)}</td>
       <td>
         <button class="btn btn-sm btn-secondary" onclick="viewAccDossierStaff('${d.id}')">🔍 Xem</button>
@@ -1492,17 +1540,16 @@ async function loadMonitorList() {
     const data = await API.get(`/progress?page=${_monitorPage}&size=${PAGE_SIZE}`);
     const el = document.getElementById('monitor-list');
     if (!data.items.length) { el.innerHTML = '<p class="empty">Chưa có báo cáo.</p>'; return; }
-    const sc = { SUBMITTED: '#6b7280', ACCEPTED: '#16a34a', NEEDS_REVISION: '#d97706', DELAYED: '#dc2626' };
     let html = `<table>
       <thead><tr><th>Đề tài</th><th>Người nộp</th><th>Kỳ</th><th>Tiến độ</th><th>Trạng thái</th><th>Ngày nộp</th></tr></thead>
       <tbody>${data.items.map(r => `<tr>
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.proposal_title || r.proposal_id}</td>
+        <td class="cell-truncate">${r.proposal_title || r.proposal_id}</td>
         <td>${r.submitted_by_name || '—'}</td>
         <td>${r.report_period || '#' + r.report_order}</td>
-        <td><b style="color:${sc[r.status] || '#333'}">${r.completion_pct}%</b>
-          ${r.is_overdue ? '<span style="color:#dc2626;font-size:11px"> ⚠️</span>' : ''}
+        <td><b style="color:${getProgressColor(r.status)}">${r.completion_pct}%</b>
+          ${r.is_overdue ? '<span class="badge badge-danger">⚠️</span>' : ''}
         </td>
-        <td><span style="color:${sc[r.status] || '#333'};font-size:12px;font-weight:600">${r.status}</span></td>
+        <td>${badge(r.status)}</td>
         <td>${fmtDateShort(r.submitted_at)}</td>
       </tr>`).join('')}</tbody></table>`;
     html += renderPagination(data.total, _monitorPage, 'gotoMonitorPage');
@@ -1525,15 +1572,15 @@ registerPage('progress-staff', async () => {
   el.innerHTML = `
     <div class="section-header"><h2>📊 Theo dõi tiến độ — Phòng KHCN</h2></div>
     <div id="msg-prog-staff"></div>
-    <div class="card" style="margin-bottom:12px">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <span style="font-weight:600;color:#374151">Lọc:</span>
+    <div class="card filter-panel">
+      <div class="filter-row">
+        <span class="filter-label">Lọc:</span>
         ${['ALL', 'SUBMITTED', 'ACCEPTED', 'NEEDS_REVISION', 'DELAYED'].map(s =>
     `<button class="btn btn-sm ${s === 'ALL' ? 'btn-primary' : 'btn-secondary'}" id="filter-${s}" onclick="filterProgressStaff('${s}')">
             ${s === 'ALL' ? 'Tất cả' : s}
           </button>`).join('')}
         <button class="btn btn-sm btn-danger" onclick="filterProgressStaff('OVERDUE')"
-          id="filter-OVERDUE" style="margin-left:8px">⚠️ Chậm tiến độ</button>
+          id="filter-OVERDUE">⚠️ Chậm tiến độ</button>
       </div>
     </div>
     <div id="prog-staff-list">Đang tải...</div>`;
@@ -1564,25 +1611,24 @@ async function loadProgressStaff() {
     const data = await API.get(url);
     if (!data.items.length) { el.innerHTML = '<p class="empty">Không có báo cáo.</p>'; return; }
 
-    const sc = { SUBMITTED: '#6b7280', ACCEPTED: '#16a34a', NEEDS_REVISION: '#d97706', DELAYED: '#dc2626' };
     const sl = { SUBMITTED: 'Đã nộp', ACCEPTED: 'Chấp nhận', NEEDS_REVISION: 'Cần bổ sung', DELAYED: 'Chậm tiến độ' };
 
     let html = `<table>
       <thead><tr><th>Đề tài</th><th>Giảng viên</th><th>Kỳ báo cáo</th><th>Hoàn thành</th><th>Trạng thái</th><th>Ngày nộp</th><th>Thao tác</th></tr></thead>
-      <tbody>${data.items.map(r => `<tr style="${r.is_overdue ? 'background:#fef2f2' : ''}">
-        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.proposal_title || ''}"><a href="#" onclick="viewProgressDetail('${r.id}');return false">${r.proposal_title || r.proposal_id}</a></td>
+      <tbody>${data.items.map(r => `<tr class="${r.is_overdue ? 'row-danger' : ''}">
+        <td class="cell-truncate" title="${r.proposal_title || ''}"><a href="#" onclick="viewProgressDetail('${r.id}');return false">${r.proposal_title || r.proposal_id}</a></td>
         <td>${r.submitted_by_name || '—'}</td>
         <td>${r.report_period || 'Kỳ #' + r.report_order}</td>
         <td>
-          <div style="display:flex;align-items:center;gap:6px">
-            <div style="background:#e5e7eb;border-radius:99px;height:6px;width:60px;overflow:hidden">
-              <div style="background:${sc[r.status] || '#ccc'};height:100%;width:${r.completion_pct}%"></div>
+          <div class="inline-actions">
+            <div class="mini-progress">
+              <div class="mini-progress-fill" style="--progress-value:${r.completion_pct}%;--progress-color:${getProgressColor(r.status)}"></div>
             </div>
-            <span style="font-weight:600;font-size:13px">${r.completion_pct}%</span>
-            ${r.is_overdue ? '<span style="color:#dc2626;font-size:11px">⚠️</span>' : ''}
+            <span class="strong text-small">${r.completion_pct}%</span>
+            ${r.is_overdue ? '<span class="badge badge-danger">⚠️</span>' : ''}
           </div>
         </td>
-        <td><span style="color:${sc[r.status] || '#333'};font-weight:600;font-size:12px">${sl[r.status] || r.status}</span></td>
+        <td><span class="status-pill" style="--status-color:${getProgressColor(r.status)}">${sl[r.status] || r.status}</span></td>
         <td>${fmtDateShort(r.submitted_at)}</td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="viewProgressDetail('${r.id}')">Xem</button>
@@ -1600,32 +1646,31 @@ function gotoProgStaffPage(p) { _progStaffPage = p; loadProgressStaff(); }
 async function viewProgressDetail(reportId) {
   try {
     const r = await API.get(`/progress/reports/${reportId}`);
-    const sc = { SUBMITTED: '#6b7280', ACCEPTED: '#16a34a', NEEDS_REVISION: '#d97706', DELAYED: '#dc2626' };
     const sl = { SUBMITTED: 'Đã nộp', ACCEPTED: 'Chấp nhận', NEEDS_REVISION: 'Cần bổ sung', DELAYED: 'Chậm tiến độ' };
     document.getElementById('modal-view-title').textContent = `Báo cáo tiến độ kỳ #${r.report_order}${r.report_period ? ' — ' + r.report_period : ''}`;
     document.getElementById('modal-view-body').innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="detail-grid">
         <div>
           <p><b>Đề tài:</b> ${r.proposal_title || r.proposal_id}</p>
           <p><b>Giảng viên:</b> ${r.submitted_by_name || '—'}</p>
-          <p><b>Tiến độ:</b> <span style="font-size:20px;font-weight:700;color:${sc[r.status] || '#333'}">${r.completion_pct}%</span></p>
-          <p><b>Trạng thái:</b> <span style="color:${sc[r.status] || '#333'};font-weight:600">${sl[r.status] || r.status}</span>
-            ${r.is_overdue ? ' <span style="color:#dc2626">⚠️ Quá hạn</span>' : ''}</p>
+          <p><b>Tiến độ:</b> <span class="metric-value" style="color:${getProgressColor(r.status)}">${r.completion_pct}%</span></p>
+          <p><b>Trạng thái:</b> <span class="status-pill" style="--status-color:${getProgressColor(r.status)}">${sl[r.status] || r.status}</span>
+            ${r.is_overdue ? ' <span class="badge badge-danger">⚠️ Quá hạn</span>' : ''}</p>
           <p><b>Ngày nộp:</b> ${fmtDate(r.submitted_at)}</p>
           ${r.attachment_url ? `<p><b>Minh chứng:</b> <a href="${r.attachment_url}" target="_blank">🔗 Xem tài liệu</a></p>` : ''}
         </div>
         <div>
-          ${r.review_note ? `<div style="padding:10px;background:#f0fdf4;border-radius:6px;border-left:3px solid #16a34a">
+          ${r.review_note ? `<div class="info-box surface-success accent-left-success">
             <b>Nhận xét Phòng KHCN:</b><br>${r.review_note}
-            <div style="font-size:12px;color:#94a3b8;margin-top:4px">${fmtDate(r.reviewed_at)}</div>
-          </div>` : '<p style="color:#94a3b8">Chưa có review.</p>'}
+            <div class="text-muted text-small mt-1">${fmtDate(r.reviewed_at)}</div>
+          </div>` : '<p class="text-muted">Chưa có review.</p>'}
         </div>
       </div>
-      <div style="margin-top:12px">
-        <h4>Công việc đã hoàn thành:</h4><p style="background:#f8fafc;padding:10px;border-radius:4px">${r.content}</p>
-        ${r.products_created ? `<h4>Sản phẩm:</h4><p style="background:#f8fafc;padding:10px;border-radius:4px">${r.products_created}</p>` : ''}
-        ${r.issues ? `<h4>Khó khăn / Rủi ro:</h4><p style="background:#fff7ed;padding:10px;border-radius:4px;border-left:3px solid #f59e0b">${r.issues}</p>` : ''}
-        <h4>Kế hoạch tiếp theo:</h4><p style="background:#f8fafc;padding:10px;border-radius:4px">${r.next_steps}</p>
+      <div class="mt-3">
+        <h4>Công việc đã hoàn thành:</h4><p class="text-box">${r.content}</p>
+        ${r.products_created ? `<h4>Sản phẩm:</h4><p class="text-box">${r.products_created}</p>` : ''}
+        ${r.issues ? `<h4>Khó khăn / Rủi ro:</h4><p class="info-box surface-warning accent-left-warning">${r.issues}</p>` : ''}
+        <h4>Kế hoạch tiếp theo:</h4><p class="text-box">${r.next_steps}</p>
       </div>`;
     openModal('modal-view');
   } catch (e) { alert(e.message); }
@@ -1638,15 +1683,14 @@ async function openProgressReview(reportId) {
   // Load report detail for context
   try {
     const r = await API.get(`/progress/reports/${reportId}`);
-    const sc = { SUBMITTED: '#6b7280', ACCEPTED: '#16a34a', NEEDS_REVISION: '#d97706', DELAYED: '#dc2626' };
     document.getElementById('modal-progress-review-body').innerHTML = `
-      <div style="background:#f8fafc;padding:10px;border-radius:6px;margin-bottom:12px">
+      <div class="info-box">
         <b>${r.proposal_title || r.proposal_id}</b> | Kỳ #${r.report_order}${r.report_period ? ' — ' + r.report_period : ''}
-        <div style="margin-top:4px;color:#374151;font-size:13px">
-          <span style="font-weight:700;font-size:18px;color:${sc[r.status] || '#333'}">${r.completion_pct}%</span> hoàn thành
-          ${r.is_overdue ? ' <span style="color:#dc2626">⚠️ Quá hạn</span>' : ''}
+        <div class="body-small mt-1">
+          <span class="metric-value" style="color:${getProgressColor(r.status)}">${r.completion_pct}%</span> hoàn thành
+          ${r.is_overdue ? ' <span class="badge badge-danger">⚠️ Quá hạn</span>' : ''}
         </div>
-        <p style="font-size:12px;color:#64748b;margin-top:6px">${r.content.substring(0, 200)}...</p>
+        <p class="text-muted text-small mt-2">${r.content.substring(0, 200)}...</p>
       </div>`;
   } catch (e) { document.getElementById('modal-progress-review-body').innerHTML = ''; }
   openModal('modal-progress-review');
@@ -1704,7 +1748,7 @@ registerPage('my-reviews', async () => {
     document.getElementById('my-reviews-list').innerHTML = `
       <div class="alert alert-error">
         <p><b>Lỗi kết nối:</b> ${e.message}</p>
-        <p style="font-size:12px; margin-top:8px">Vui lòng kiểm tra xem Server Backend (port 8000) có đang hoạt động không.</p>
+        <p class="text-small mt-2">Vui lòng kiểm tra xem Server Backend (port 8000) có đang hoạt động không.</p>
       </div>`;
   }
 });
@@ -1714,7 +1758,10 @@ let _currentCriteria = [];
 
 async function openSubmitReview(councilId, proposalId) {
   _reviewCtx = { councilId, proposalId };
-  document.getElementById('review-score').value = '0';
+  const reviewScore = document.getElementById('review-score');
+  reviewScore.value = '0';
+  reviewScore.readOnly = true;
+  reviewScore.classList.add('readonly-field');
   document.getElementById('review-comments').value = '';
   document.getElementById('review-verdict').value = 'PASS';
 
@@ -1729,21 +1776,21 @@ async function openSubmitReview(councilId, proposalId) {
     if (templates.items && templates.items.length > 0) {
       _currentCriteria = templates.items[0].criteria_json;
       criteriaInputs.innerHTML = _currentCriteria.map(c => `
-        <div class="form-group" style="margin-bottom:8px">
-          <label style="font-size:12px">${c.label} (Tối đa ${c.max_score})</label>
+        <div class="form-group mb-2">
+          <label class="text-small">${c.label} (Tối đa ${c.max_score})</label>
           <input type="number" class="criteria-input" data-id="${c.id}" data-max="${c.max_score}" 
                  min="0" max="${c.max_score}" value="0" step="0.5" 
-                 oninput="calcTotalReviewScore()" style="padding:4px; font-size:13px">
+                 oninput="calcTotalReviewScore()">
         </div>
       `).join('');
     } else {
       container.style.display = 'none';
-      document.getElementById('review-score').readOnly = false;
-      document.getElementById('review-score').style.background = '#fff';
+      reviewScore.readOnly = false;
+      reviewScore.classList.remove('readonly-field');
     }
   } catch (e) {
     console.error('Failed to load criteria', e);
-    criteriaInputs.innerHTML = '<p style="color:red;font-size:12px">Không thể tải tiêu chí.</p>';
+    criteriaInputs.innerHTML = '<p class="badge badge-danger">Không thể tải tiêu chí.</p>';
   }
 
   openModal('modal-submit-review');
@@ -1951,9 +1998,8 @@ function debounce(func, wait) {
 function renderCatalogNav() {
   const ul = document.getElementById('catalog-nav');
   ul.innerHTML = Object.entries(CATALOG_CONFIGS).map(([k, v]) => `
-    <li style="margin-bottom:8px">
+    <li>
       <a href="#" class="btn btn-sm ${k === _currentCatalog ? 'btn-primary' : 'btn-secondary'}" 
-         style="display:block; text-align:left; border-radius:4px"
          onclick="changeCatalogTab('${k}')">${v.title}</a>
     </li>
   `).join('');
@@ -1977,15 +2023,15 @@ async function loadCatalogData() {
   const tbody = document.getElementById('catalog-table-body');
 
   thead.innerHTML = `<tr>${cfg.cols.map(c => `<th>${c.label}</th>`).join('')}<th>Trạng thái</th><th>Hành động</th></tr>`;
-  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center">Đang tải...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" class="text-center">Đang tải...</td></tr>';
 
   try {
     const res = await API.getCatalogs(_currentCatalog, { page: _catPage, size: 10, search, is_active: isActive });
     if (!res.items.length) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center" class="empty">Không tìm thấy dữ liệu.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">Không tìm thấy dữ liệu.</td></tr>';
     } else {
       tbody.innerHTML = res.items.map(item => `
-        <tr style="${!item.is_active ? 'opacity:0.6' : ''}">
+        <tr class="${!item.is_active ? 'row-muted' : ''}">
           ${cfg.cols.map(c => `<td>${item[c.k] || '—'}</td>`).join('')}
           <td>${item.is_active ? badge('ACTIVE') : badge('DISABLED')}</td>
           <td>

@@ -3,44 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SciRes PTIT — Hệ thống Quản lý Nghiên cứu Khoa học dành cho sinh viên, giảng viên và cán bộ Học viện Công nghệ Bưu chính Viễn thông">
   <title>SciRes — Đăng nhập</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <style>
-    .login-box h2 { color: #1e293b; }
-    .login-box .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; text-align: center; }
-    .demo-accounts { margin-top: 16px; background: #f8fafc; border-radius: 6px; padding: 12px; }
-    .demo-accounts h4 { font-size: 12px; color: #64748b; margin-bottom: 8px; }
-    .demo-accounts button { display: block; width: 100%; margin-bottom: 4px; padding: 6px; background: #e2e8f0; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; text-align: left; }
-    .demo-accounts button:hover { background: #cbd5e1; }
-  </style>
 </head>
 <body>
   <div id="login-screen">
-    <div class="login-box">
-      <h2>🔬 SciRes</h2>
-      <p class="subtitle">Hệ thống Quản lý Nghiên cứu Khoa học</p>
-      <div id="login-msg"></div>
-      <form id="login-form">
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="email" placeholder="email@university.edu.vn" required>
+    <div class="login-shell">
+      <div class="login-box ptit-style-box">
+        <div class="login-brand-center">
+          <img src="https://daotao.ptit.edu.vn/wp-content/uploads/sites/3/2024/08/Slide-16_9-1.png" alt="PTIT Logo" class="ptit-logo" width="500" height="150">
+          <div class="login-title-text">Đăng nhập</div>
+          <h2 class="login-app-name">HỆ THỐNG QUẢN LÝ NGHIÊN CỨU KHOA HỌC</h2>
         </div>
-        <div class="form-group">
-          <label>Mật khẩu</label>
-          <input type="password" id="password" placeholder="password123" required>
-        </div>
-        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:4px">Đăng nhập</button>
-      </form>
+        
+        <div id="login-msg"></div>
+        <form id="login-form">
+          <div class="form-group login-field">
+            <label>Tài khoản</label>
+            <input type="email" id="email" required class="input-plain">
+          </div>
+          <div class="form-group login-field">
+            <label>Mật khẩu</label>
+            <input type="password" id="password" required class="input-plain">
+          </div>
+          
+          <div class="login-options">
+            <label class="remember-me"><input type="checkbox"> Ghi nhớ</label>
+            <a href="#" class="forgot-link">Quên mật khẩu?</a>
+          </div>
+          
+          <button type="submit" class="btn btn-primary login-submit btn-red">Đăng nhập</button>
+        </form>
 
-      <div class="demo-accounts">
-        <h4>🧪 Tài khoản demo (pass: password123)</h4>
-        <button onclick="fillLogin('admin@university.edu.vn')">Admin — admin@university.edu.vn</button>
-        <button onclick="fillLogin('staff@university.edu.vn')">Staff (P.KHCN) — staff@university.edu.vn</button>
-        <button onclick="fillLogin('leader@university.edu.vn')">Lãnh đạo — leader@university.edu.vn</button>
-        <button onclick="fillLogin('faculty1@university.edu.vn')">Giảng viên — faculty1@university.edu.vn</button>
-        <button onclick="fillLogin('faculty2@university.edu.vn')">Giảng viên — faculty2@university.edu.vn</button>
-        <button onclick="fillLogin('reviewer1@university.edu.vn')">Phản biện — reviewer1@university.edu.vn</button>
-        <button onclick="fillLogin('reviewer2@university.edu.vn')">Phản biện — reviewer2@university.edu.vn</button>
+        <div class="demo-accounts-toggle">
+          <details>
+            <summary>Tài khoản demo (Dành cho Dev/Test)</summary>
+            <div class="demo-account-grid">
+              <button type="button" class="demo-account" onclick="fillLogin('admin@university.edu.vn')"><span>Admin</span></button>
+              <button type="button" class="demo-account" onclick="fillLogin('staff@university.edu.vn')"><span>Phòng KHCN</span></button>
+              <button type="button" class="demo-account" onclick="fillLogin('leader@university.edu.vn')"><span>Lãnh đạo</span></button>
+              <button type="button" class="demo-account" onclick="fillLogin('faculty1@university.edu.vn')"><span>GV 1</span></button>
+              <button type="button" class="demo-account" onclick="fillLogin('reviewer1@university.edu.vn')"><span>PB 1</span></button>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   </div>
